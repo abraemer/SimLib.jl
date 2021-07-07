@@ -27,9 +27,9 @@ println("#threads of Julia:          $(Threads.nthreads())")
 println("#threads of BLAS:           $(BLAS.get_num_threads())")
 @show ARGS
 
-Pkg.activate(".")
-Pkg.instantiate()
-Pkg.status()
+Pkg.activate("."; io=stdout)
+Pkg.instantiate(; io=stdout)
+Pkg.status(; io=stdout)
 
 using Random
 using SimLib
@@ -38,7 +38,7 @@ using SimLib.Positions
 const SHOTS = length(ARGS) > 0 ? parse(Int64, ARGS[1]) : 100
 const RHO_SAMPLES = 20
 const PREFIX = try
-        joinpath(run(`ws_find cusp`), "julia")
+        joinpath(readchomp(`ws_find cusp`), "julia")
     catch e
         joinpath(pwd(), "data")
     end
