@@ -2,7 +2,7 @@
 # ########## Begin Slurm header ########## 
 #SBATCH --nodes=1 
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=00:40:00 
+#SBATCH --time=00:05:00 
 #SBATCH --mem=1gb 
 #SBATCH --job-name=positions
 #SBATCH --output="logs/pos-slurm-%j.out"
@@ -28,6 +28,7 @@ println("#threads of BLAS:           $(BLAS.get_num_threads())")
 @show ARGS
 
 Pkg.activate(".")
+Pkg.instantiate()
 Pkg.status()
 
 using Random
