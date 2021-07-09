@@ -12,10 +12,11 @@ export PositionData, dimension, system_size, shots, ρs, geometry, data, positio
 struct PositionData
     geometry::Symbol
     ρs::Vector{Float64}
+    # [xyz, N, shot, ρ]
     coords::Array{Float64, 4}
 end
 
-PositionData(geometry, ρs, shots, system_size, dim) = PositionData(geometry, vec(ρs), zeros(Float64, dim, system_size, shots, length(ρs)))
+PositionData(geometry, ρs, shots, system_size, dim) = PositionData(geometry, sort(vec(ρs)), zeros(Float64, dim, system_size, shots, length(ρs)))
 
 dimension(posdata::PositionData) = size(posdata.coords, 1)
 system_size(posdata::PositionData) = size(posdata.coords, 2)
