@@ -96,7 +96,7 @@ function run_ed!(eddata::EDData, posdata::PositionData; scale_field=:ensemble)
             ensemble_J_mean = _ensemble_J_mean(interaction, geom, data(posdata)[:,:,:,i])
             logmsg("Ensemble J mean for rho_$i=$ρ: $ensemble_J_mean")
         end
-        for shot in 1:nshots
+        Threads.@threads for shot in 1:nshots
             #logmsg(@sprintf("%03i/%03i", shot, nshots))
             J = interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
             model = symmetrize_op(xxzmodel(J, -0.73))

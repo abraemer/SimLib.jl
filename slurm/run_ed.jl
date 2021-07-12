@@ -2,16 +2,18 @@
 # ########## Begin Slurm header ########## 
 #SBATCH --nodes=1 
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=00:05:00 
-#SBATCH --mem=1gb 
-#SBATCH --job-name=positions
-#SBATCH --output="logs/pos-slurm-%j.out"
+#SBATCH --time=06:00:00 
+#SBATCH --mem=32gb 
+#SBATCH --job-name=run-ed
+#SBATCH --cpus-per-task=48
+#SBATCH --output="logs/run_ed-slurm-%j.out"
 ########### End Slurm header ##########
 #=
 # load modules
 # not needed - julia installed locally
-
-exec julia --color=no --threads=1 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
+export MKL_NUM_THREADS=8
+export OMP_NUM_THREADS=8
+exec julia --color=no --threads=8 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
 =#
 
 println("RUN_ED.jl")
@@ -25,7 +27,7 @@ const GEOMETRY = Symbol(lowercase(ARGS[1]))
 const N = parse(Int, ARGS[2])
 const DIM = parse(Int, ARGS[3])
 const ALPHA = parse(Float64, ARGS[4])
-const FIELDS = sort!(parse.(Float64, ARGS[5:end]))
+const FIELDS = sort!(collect(Set(parse.(Float64, ARGS[5:end]))))
 @show ARGS
 @show GEOMETRY
 @show N
