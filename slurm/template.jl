@@ -31,12 +31,12 @@ Pkg.activate(".")
 Pkg.instantiate(; io=stdout)
 Pkg.status(; io=stdout)
 
-using Random
+## imports
 using SimLib
 using SimLib.Positions
 
-const SHOTS = length(ARGS) > 0 ? parse(Int64, ARGS[1]) : 100
-const RHO_SAMPLES = 3
+## Constants and ARGS
+
 const PREFIX = try
         joinpath(readchomp(`ws_find cusp`), "julia")
     catch e
@@ -44,28 +44,16 @@ const PREFIX = try
     end
 @show PREFIX
 
-valid_geometry(geom, dim) = length(SimLib.SAFE_RHO_RANGES[geom]) >= dim
+## Functions
 
-function create(geom, dim, N)
-    (rho_start, rho_end) = SimLib.SAFE_RHO_RANGES[geom][dim]
-    rho_step = (rho_end - rho_start)/(RHO_SAMPLES-1)
-    logmsg("geometry=$geom N=$N dim=$dim")
-    data = PositionData(geom, rho_start:rho_step:rho_end, SHOTS, N, dim)
-    save(PREFIX, create_positions!(data))
-end
+## main
 
 println()
 logmsg("Starting!")
 
 @time begin
-    Random.seed!(5)
-
-    todo = Iterators.product(SimLib.GEOMETRIES, 1:3, 6:20)
-    todo = Iterators.filter(geom_dim_N -> valid_geometry(geom_dim_N[1:2]...), todo)
-    todo = collect(todo)
-    Threads.@threads for (geom, dim, N) in todo
-        create(geom, dim, N)
-    end
+    ## DO STUFF
 
     logmsg("Done!")
 end
+## REMEMBER TO SET RESOURCE HEADER FOR SLURM!
