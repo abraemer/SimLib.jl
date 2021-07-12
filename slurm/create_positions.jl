@@ -27,7 +27,7 @@ println("#threads of Julia:          $(Threads.nthreads())")
 println("#threads of BLAS:           $(BLAS.get_num_threads())")
 @show ARGS
 
-Pkg.activate("."; io=stdout)
+Pkg.activate(".")
 Pkg.instantiate(; io=stdout)
 Pkg.status(; io=stdout)
 
