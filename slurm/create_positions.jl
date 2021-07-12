@@ -36,7 +36,7 @@ using SimLib
 using SimLib.Positions
 
 const SHOTS = length(ARGS) > 0 ? parse(Int64, ARGS[1]) : 100
-const RHO_SAMPLES = 20
+const RHO_SAMPLES = 3
 const PREFIX = try
         joinpath(readchomp(`ws_find cusp`), "julia")
     catch e
@@ -44,12 +44,10 @@ const PREFIX = try
     end
 @show PREFIX
 
-function create(geom, N, dim)
-    rho_ranges = SimLib.SAFE_RHO_RANGES[geom]
-    if dim > length(rho_ranges)
-        return
-    end
-    (rho_start, rho_end) = rho_ranges[dim]
+valid_geometry(geom, dim) = length(SimLib.SAFE_RHO_RANGES[geom]) >= dim
+
+function create(geom, dim, N)
+    (rho_start, rho_end) = SimLib.SAFE_RHO_RANGES[geom][dim]
     rho_step = (rho_end - rho_start)/(RHO_SAMPLES-1)
     logmsg("geometry=$geom N=$N dim=$dim")
     data = PositionData(geom, rho_start:rho_step:rho_end, SHOTS, N, dim)
@@ -58,10 +56,16 @@ end
 
 println()
 logmsg("Starting!")
-Random.seed!(5)
 
-Threads.@threads for (geom, N, dim) in vec(collect(Iterators.product(SimLib.GEOMETRIES, 6:20, 1:3)))
-    create(geom, N, dim)
+@time begin
+    Random.seed!(5)
+
+    todo = Iterators.product(SimLib.GEOMETRIES, 1:3, 6:20)
+    todo = Iterators.filter(geom_dim_N -> valid_geometry(geom_dim_N[1:2]...), todo)
+    todo = collect(todo)
+    Threads.@threads for (geom, dim, N) in todo
+        create(geom, dim, N)
+    end
+
+    logmsg("Done!")
 end
-
-logmsg("Done!")
