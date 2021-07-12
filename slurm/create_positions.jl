@@ -13,9 +13,12 @@
 
 exec julia --color=no --threads=1 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
 =#
+println("CREATE_POSITIONS.slurm")
+
+## environment
+import Pkg
 using LinearAlgebra # for BLAS threads
 
-println("CREATE_POSITIONS.slurm")
 println("Working Directory:          $(pwd())" )
 println("Running on host:            $(gethostname())" )
 println("Job id:                     $(get(ENV, "SLURM_JOB_ID", ""))" )
@@ -26,15 +29,16 @@ println("#threads of Julia:          $(Threads.nthreads())")
 println("#threads of BLAS:           $(BLAS.get_num_threads())")
 @show ARGS
 
-import Pkg
 Pkg.activate(".")
 Pkg.instantiate(; io=stdout)
 Pkg.status(; io=stdout)
 
+## imports
 using Random
 using SimLib
 using SimLib.Positions
 
+## constants and ARGS
 const SHOTS = length(ARGS) > 0 ? parse(Int64, ARGS[1]) : 100
 const RHO_SAMPLES = 3
 const PREFIX = try
@@ -44,6 +48,7 @@ const PREFIX = try
     end
 @show PREFIX
 
+## functions
 valid_geometry(geom, dim) = length(SimLib.SAFE_RHO_RANGES[geom]) >= dim
 
 function create(geom, dim, N)
@@ -54,6 +59,7 @@ function create(geom, dim, N)
     save(PREFIX, create_positions!(data))
 end
 
+## main
 println()
 logmsg("Starting!")
 

@@ -2,6 +2,15 @@ function logmsg(msg...)
     println("[$(now())] $(join(msg, " | "))")
 end
 
+function path_prefix()
+    try
+        joinpath(readchomp(`ws_find cusp`), "julia")
+    catch e
+        joinpath(pwd(), "data")
+    end
+end
+
+
 const GEOMETRIES = [:box, :box_pbc, :noisy_chain, :noisy_chain_pbc]
 
 # The OBC Volume coeffs should probably be a bit bigger to accommodate for the extra space outside

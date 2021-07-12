@@ -18,31 +18,12 @@ exec julia --color=no --threads=8 --startup-file=no "${BASH_SOURCE[0]}" "$@"
 
 println("RUN_ED.jl")
 
-## Constants and ARGS
 if length(ARGS) < 5
     println("Usage: run_ed.jl geom N dim alpha field...")
     exit()
 end
-const GEOMETRY = Symbol(lowercase(ARGS[1]))
-const N = parse(Int, ARGS[2])
-const DIM = parse(Int, ARGS[3])
-const ALPHA = parse(Float64, ARGS[4])
-const FIELDS = sort!(collect(Set(parse.(Float64, ARGS[5:end]))))
-@show ARGS
-@show GEOMETRY
-@show N
-@show DIM
-@show ALPHA
-@show FIELDS
 
-const PREFIX = try
-    joinpath(readchomp(`ws_find cusp`), "julia")
-catch e
-    joinpath(pwd(), "data")
-end
-@show PREFIX
-
-## Environment
+## environment
 using Pkg
 using LinearAlgebra
 
@@ -64,7 +45,21 @@ using SimLib
 using SimLib.Positions
 using SimLib.ED
 
-## Functions
+## Constants and ARGS
+const GEOMETRY = Symbol(lowercase(ARGS[1]))
+const N = parse(Int, ARGS[2])
+const DIM = parse(Int, ARGS[3])
+const ALPHA = parse(Float64, ARGS[4])
+const FIELDS = sort!(collect(Set(parse.(Float64, ARGS[5:end]))))
+@show ARGS
+@show GEOMETRY
+@show N
+@show DIM
+@show ALPHA
+@show FIELDS
+
+const PREFIX = path_prefix()
+@show PREFIX
 
 ## main
 

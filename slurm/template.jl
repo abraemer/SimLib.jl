@@ -13,9 +13,14 @@
 
 exec julia --color=no --threads=1 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
 =#
+println("TEMPLATE.slurm")
+
+# check ARGS length and print usage if wrong
+
+## environment
+import Pkg
 using LinearAlgebra # for BLAS threads
 
-println("CREATE_POSITIONS.slurm")
 println("Working Directory:          $(pwd())" )
 println("Running on host:            $(gethostname())" )
 println("Job id:                     $(get(ENV, "SLURM_JOB_ID", ""))" )
@@ -26,7 +31,6 @@ println("#threads of Julia:          $(Threads.nthreads())")
 println("#threads of BLAS:           $(BLAS.get_num_threads())")
 @show ARGS
 
-import Pkg
 Pkg.activate(".")
 Pkg.instantiate(; io=stdout)
 Pkg.status(; io=stdout)
@@ -35,16 +39,11 @@ Pkg.status(; io=stdout)
 using SimLib
 using SimLib.Positions
 
-## Constants and ARGS
-
-const PREFIX = try
-        joinpath(readchomp(`ws_find cusp`), "julia")
-    catch e
-        joinpath(pwd(), "data")
-    end
+## constants and ARGS
+const PREFIX = path_prefix()
 @show PREFIX
 
-## Functions
+## functions
 
 ## main
 
