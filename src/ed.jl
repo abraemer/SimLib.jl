@@ -83,7 +83,7 @@ function run_ed!(eddata::EDData, posdata::PositionData; scale_field=:ensemble)
     interaction = PowerLaw(α(eddata))
     spin_ops = symmetrize_op.(op_list(σx/2, N))
     field_operator = sum(spin_ops)
-    ψ0 = vec(symmetrize_state(foldl(⊗, (up for _ in 1:N))))
+    ψ0 = vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:N))))
 
     logmsg("ToDo: rho=$ρs")
     logmsg("with $nshots realizations and  $(length(field_values)) field values")
