@@ -1,5 +1,6 @@
 function logmsg(msg...)
     println("[$(now())] $(join(msg, " | "))")
+    flush(stdout)
 end
 
 function path_prefix()
