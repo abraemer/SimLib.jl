@@ -13,7 +13,7 @@
 # not needed - julia installed locally
 export MKL_NUM_THREADS=96
 export OMP_NUM_THREADS=96
-exec julia --color=no --processes=48 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
+exec julia --color=no --procs 48 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
 =#
 
 println("RUN_ED.jl")
