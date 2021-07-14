@@ -199,9 +199,12 @@ function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensembl
                 normed_field_values *= ensemble_J_mean
             end
 
-            @async remotecall_wait(_compute_core_parallel!, worker, @sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker),
+            @async begin
+                logmsg(@sprintf("#rho =%2i - %03i/%03i on #%02i")
+                remotecall_wait(_compute_core!, worker, i, shot, nshots, worker),
                 view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
                 model, normed_field_values, field_operator, spin_ops, ψ0)
+            end
             # @spawnat worker _compute_core_parallel!(@sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker),
             #     view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
             #     model, normed_field_values, field_operator, spin_ops, ψ0)
