@@ -1,9 +1,10 @@
 #!/bin/sh 
 # ########## Begin Slurm header ########## 
 #SBATCH --nodes=1 
-#SBATCH --ntasks-per-node=48
+#SBATCH --ntasks-per-node=1
 #SBATCH --time=05:00:00 
 #SBATCH --mem=20gb 
+#SBATCH --cpus-per-task=48
 #SBATCH --job-name=blas-threads
 #SBATCH --output="logs/blas-threads-slurm-%j.out"
 ########### End Slurm header ##########
