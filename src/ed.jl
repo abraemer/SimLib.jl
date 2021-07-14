@@ -3,9 +3,11 @@ module ED
 using ..Positions
 using ..SimLib: logmsg, geometry_from_density
 
+using Distributed
 using JLD2
 using LinearAlgebra
 using Printf: @sprintf
+using SharedArrays
 using XXZNumerics
 
 # simplify type definitions
@@ -74,6 +76,22 @@ function _ensemble_J_mean(interaction, geometry, positions)
     mapreduce(pos->sum(interaction_matrix(interaction, geometry, pos)), +, eachslice(positions; dims=3))/size(positions,2)/size(positions,3)
 end
 
+function _compute_core!(eev_out, evals_out, eon_out, model, field_values, field_operator, operators, ψ0)
+    for (k, h) in enumerate(field_values)
+        H = model + h*field_operator
+        evals, evecs = eigen!(Hermitian(Matrix(H)))
+        for (l, evec) in enumerate(eachcol(evecs))
+            for (op_index, op) in enumerate(operators)
+                eev_out[op_index, l, k] = real(dot(evec, op, evec)) # dot conjugates the first arg
+            end
+        end
+        evals_out[:, k] = evals
+        eon_out[:, k] .= abs2.(evecs' * ψ0)
+    end
+end
+
+run_ed(posdata::PositionData, α, fields; scale_field=:ensemble) = run_ed!(EDData(posdata, α, fields), posdata; scale_field)
+
 function run_ed!(eddata::EDData, posdata::PositionData; scale_field=:ensemble)
     N = system_size(eddata)
     dim = Positions.dimension(posdata)
@@ -106,23 +124,90 @@ function run_ed!(eddata::EDData, posdata::PositionData; scale_field=:ensemble)
             elseif scale_field == :ensemble
                 normed_field_values *= ensemble_J_mean
             end
-
-            for (k, h) in enumerate(normed_field_values)
-                H = model + h*field_operator
-                evals, evecs = eigen!(Hermitian(Matrix(H)))
-                for (l, evec) in enumerate(eachcol(evecs))
-                    for (spin, op) in enumerate(spin_ops)
-                        eev(eddata)[spin, l, shot, k, i] = real(dot(evec, op, evec)) # dot conjugates the first arg
-                    end
-                end
-                eddata.evals[:,shot, k, i] = evals
-                eddata.eon[:, shot, k, i] .= abs2.(evecs' * ψ0)
-            end
+            _compute_core!(
+                view(eddata.eev, :,:,shot,:,i), view(eddata.evals, :,shot,:,i), view(eddata.eon, :,shot,:,i),
+                model, normed_field_values, field_operator, spin_ops, ψ0)
+            # for (k, h) in enumerate(normed_field_values)
+            #     H = model + h*field_operator
+            #     evals, evecs = eigen!(Hermitian(Matrix(H)))
+            #     for (l, evec) in enumerate(eachcol(evecs))
+            #         for (spin, op) in enumerate(spin_ops)
+            #             eev(eddata)[spin, l, shot, k, i] = real(dot(evec, op, evec)) # dot conjugates the first arg
+            #         end
+            #     end
+            #     eddata.evals[:,shot, k, i] = evals
+            #     eddata.eon[:, shot, k, i] .= abs2.(evecs' * ψ0)
+            # end
         end
     end
     eddata
 end
 
-run_ed(posdata::PositionData, α, fields; scale_field=:ensemble) = run_ed!(EDData(posdata, α, fields), posdata; scale_field)
+function _compute_core_parallel!(msg, eev_out, evals_out, eon_out, model, field_values, field_operator, operators, ψ0)
+    logmsg(msg)
+    _compute_core!(eev_out, evals_out, eon_out, model, field_values, field_operator, operators, ψ0)
+end
+
+function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensemble, processes=Int[])
+    N = Positions.system_size(posdata)
+    dim = Positions.dimension(posdata)
+    ρs = Positions.ρs(posdata)
+    nshots = Positions.shots(posdata)
+    hilbert_space_dim = 2^(N-1)
+    geometry = Positions.geometry(posdata)
+
+    if length(processes) == 0
+        processes = workers()        
+    end
+    
+    next_worker = let nworkers = length(processes); worker_index = 0;
+        function inner()
+            next_index = mod(worker_index, nworkers)+1
+            worker_index += 1
+            processes[next_index]
+        end
+    end
+    
+    eev = SharedArray{Float64}((N, hilbert_space_dim, nshots, length(fields), length(ρs)))
+    evals = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
+    eon = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
+
+    interaction = PowerLaw(α)
+    spin_ops = symmetrize_op.(op_list(σx/2, N))
+    field_operator = sum(spin_ops)
+    ψ0 = vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:N))))
+
+    logmsg("ToDo: rho=$ρs")
+    logmsg("with $nshots realizations and  $(length(fields)) field values")
+    @sync for (i, ρ) in enumerate(ρs)
+        logmsg("rho = $ρ")
+        geom = geometry_from_density(geometry, ρ, N, dim)
+        ensemble_J_mean = 0
+        if scale_field == :ensemble
+            # compute the ensembles mean J
+            ensemble_J_mean = _ensemble_J_mean(interaction, geom, data(posdata)[:,:,:,i])
+            logmsg("Ensemble J mean for rho_$i=$ρ: $ensemble_J_mean")
+        end
+        for shot in 1:nshots
+            worker = next_worker()
+            J = interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
+            model = symmetrize_op(xxzmodel(J, -0.73))
+            normed_field_values = fields
+            if scale_field == :shot
+                normed_field_values *= sum(J)/N
+            elseif scale_field == :ensemble
+                normed_field_values *= ensemble_J_mean
+            end
+
+            @async remotecall_wait(_compute_core_parallel!, worker, @sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker),
+                view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
+                model, normed_field_values, field_operator, spin_ops, ψ0)
+            # @spawnat worker _compute_core_parallel!(@sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker),
+            #     view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
+            #     model, normed_field_values, field_operator, spin_ops, ψ0)
+        end
+    end
+    EDData(geometry, dim, α, ρs, fields, sdata(eev), sdata(eon), sdata(evals))
+end
 
 end #module

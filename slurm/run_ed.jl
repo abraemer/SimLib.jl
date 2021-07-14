@@ -11,9 +11,9 @@
 #=
 # load modules
 # not needed - julia installed locally
-export MKL_NUM_THREADS=8
-export OMP_NUM_THREADS=8
-exec julia --color=no --threads=8 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
+export MKL_NUM_THREADS=96
+export OMP_NUM_THREADS=96
+exec julia --color=no --processes=48 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
 =#
 
 println("RUN_ED.jl")
@@ -36,12 +36,22 @@ println("Number of cores allocated:  $(get(ENV, "SLURM_NTASKS", ""))" )
 println("#threads of Julia:          $(Threads.nthreads())")
 println("#threads of BLAS:           $(BLAS.get_num_threads())")
 
-Pkg.activate(".")
+using Distributed
+if nprocs() == 1 # we run local so go easy on amount of workers
+    addprocs(4; topology=:master_worker)
+end
+
+# using Distributed # not needed when started with -p
+@everywhere import Pkg
+@everywhere Pkg.activate(".")
 Pkg.instantiate(; io=stdout)
 Pkg.status(; io=stdout)
 
 ## imports
-using SimLib
+@everywhere using SimLib
+@everywhere using LinearAlgebra
+@everywhere LinearAlgebra.BLAS.set_num_threads(2)
+
 using SimLib.Positions
 using SimLib.ED
 
@@ -70,7 +80,7 @@ logmsg("Starting!")
     SimLib.logmsg("Loading position data")
     pd = Positions.load(PREFIX, GEOMETRY, N, DIM)
     SimLib.logmsg("Running ED")
-    ED.save(PREFIX, ED.run_ed(pd, ALPHA, FIELDS))
+    ED.save(PREFIX, ED.run_ed_parallel(pd, ALPHA, FIELDS))
     logmsg("Done!")
 end
 ## REMEMBER TO SET RESOURCE HEADER FOR SLURM!
@@ -79,3 +89,20 @@ end
 # pd = Positions.load(PREFIX, :box, 6, 1)
 # SimLib.logmsg("Running ED")
 # ED.save(PREFIX, ED.run_ed(pd, 6, [0.1,0.2]))
+
+## NOTES!
+# BLAS threads are per process. So in order to parallelize diagonalization I need to have multiple julia processes
+# For this one uses Distributed. The structure should look roughly like
+# 1) load Distributed
+# 2) use Distributed.addprocs(N) to initialize workers (or ensure at least that there are enough - 
+#    Julia can be started with -p to add processes from the start)
+# 3) load libraries on ALL processes with @everywhere
+# 4) Allocate SharedArrays.SharedArray for the output data
+# use @spawnat :any?? or @async remote_do ?? What is the difference?
+# 5) put whole computation in @sync and start subtasks with @spawnat :any (should be round-robin I think?)
+#    A subtask basically performs a diagonalization, computes the results and puts them into the SharedArrays
+#    Thus I do not need to do any handling of output of these subtasks. Just start and at the end of @sync
+#    everything will be inside the SharedArray
+# 6) Convert SharedArray to normal Array and carry on.
+#
+# Note: Input data does not need to be a SharedArray I think
