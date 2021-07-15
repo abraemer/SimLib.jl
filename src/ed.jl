@@ -77,9 +77,10 @@ function _ensemble_J_mean(interaction, geometry, positions)
 end
 
 function _compute_core!(eev_out, evals_out, eon_out, model, field_values, field_operator, operators, ψ0)
+    matrix = zeros(eltype(model), size(model)) # preallocate
     for (k, h) in enumerate(field_values)
-        H = model + h*field_operator
-        evals, evecs = eigen!(Hermitian(Matrix(H)))
+        copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
+        evals, evecs = eigen!(Hermitian(matrix))
         for (l, evec) in enumerate(eachcol(evecs))
             for (op_index, op) in enumerate(operators)
                 eev_out[op_index, l, k] = real(dot(evec, op, evec)) # dot conjugates the first arg
@@ -168,6 +169,7 @@ function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensembl
         end
     end
     
+    #TODO only share with specified workers in processes arg
     eev = SharedArray{Float64}((N, hilbert_space_dim, nshots, length(fields), length(ρs)))
     evals = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
     eon = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
@@ -218,6 +220,88 @@ function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensembl
             end
         end
         logmsg("All queued")
+    end
+    EDData(geometry, dim, α, ρs, fields, sdata(eev), sdata(eon), sdata(evals))
+end
+
+
+_flat_to_indices(index, nshots) = (div(index-1, nshots)+1, rem(index-1, nshots)+1)
+function _chunk_flat(interactions)
+    idx = indexpids(interactions)
+    nchunks = length(procs(interactions))
+    total = size(interactions, 3) * size(interactions, 4) # nshots*nρs
+    splits = [round(Int, s) for s in range(0; stop=total, length=nchunks+1)]
+    (splits[idx]+1):splits[idx+1]
+end
+
+function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, field_values, field_operator, scale_field, operators, ψ0)
+    matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate
+    N = size(interactions, 1)
+    nshots = size(interactions, 3)
+    logmsg("Range: $(_chunk_flat(interactions)) on #0$(indexpids(interactions))")
+    for index in _chunk_flat(interactions)
+        i, shot = _flat_to_indices(index, nshots)
+        logmsg("$index -> $shot, $i")
+        J = @view interactions[:,:, shot, i]
+        model = real.(symmetrize_op(xxzmodel(J, -0.73)))
+        normed_field_values = field_values
+        if scale_field == :shot
+            normed_field_values *= sum(J)/N
+        elseif scale_field == :ensemble
+            normed_field_values *= sum(@view interactions[:,:,:,i])/nshots/N
+        end
+        
+        for (k, h) in enumerate(normed_field_values)
+            copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
+            evals, evecs = eigen!(Hermitian(matrix))
+            for (l, evec) in enumerate(eachcol(evecs))
+                for (op_index, op) in enumerate(operators)
+                    eev_out[op_index, l, shot, k, i] = real(dot(evec, op, evec)) # dot conjugates the first arg
+                end
+            end
+            evals_out[:, shot, k, i] = evals
+            eon_out[:, shot, k, i] .= abs2.(evecs' * ψ0) # this allocates the most right now!
+        end
+        logmsg(@sprintf("Done %03i - #rho =%2i - %03i/%03i on #%02i", index, i, shot, nshots, indexpids(interactions)))
+    end
+end
+
+function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemble, processes=Int[])
+    N = Positions.system_size(posdata)
+    dim = Positions.dimension(posdata)
+    ρs = Positions.ρs(posdata)
+    nshots = Positions.shots(posdata)
+    hilbert_space_dim = 2^(N-1)
+    geometry = Positions.geometry(posdata)
+
+    if length(processes) == 0
+        processes = workers()        
+    end
+    
+    #TODO only share with specified workers in processes arg    
+    eev = SharedArray{Float64}((N, hilbert_space_dim, nshots, length(fields), length(ρs)))
+    evals = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
+    eon = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
+
+    interaction = PowerLaw(α)
+    spin_ops = real.(symmetrize_op.(op_list(σx/2, N)))
+    field_operator = sum(spin_ops)
+    ψ0 = SharedArray(vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:N)))))
+
+    interactions = SharedArray{Float64}((N,N,nshots,length(ρs)))
+    logmsg("Calculating interactions")
+    for i in 1:length(ρs)
+        geom = geometry_from_density(geometry, ρs[i], N, dim)
+        for shot in 1:nshots
+            interactions[:,:, shot, i] .= interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
+        end
+    end
+
+    logmsg("ToDo: rho=$ρs")
+    logmsg("with $nshots realizations and  $(length(fields)) field values")
+    @sync for p in processes
+        @async remotecall_wait(_compute_core_parallel2!, p,
+            eev, evals, eon, interactions, fields, field_operator, scale_field, spin_ops, ψ0)
     end
     EDData(geometry, dim, α, ρs, fields, sdata(eev), sdata(eon), sdata(evals))
 end

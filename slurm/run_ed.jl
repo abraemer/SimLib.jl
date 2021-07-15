@@ -80,7 +80,7 @@ logmsg("Starting!")
     SimLib.logmsg("Loading position data")
     pd = Positions.load(PREFIX, GEOMETRY, N, DIM)
     SimLib.logmsg("Running ED")
-    ED.save(PREFIX, ED.run_ed_parallel(pd, ALPHA, FIELDS))
+    ED.save(PREFIX, ED.run_ed_parallel2(pd, ALPHA, FIELDS))
     logmsg("Done!")
 end
 ## REMEMBER TO SET RESOURCE HEADER FOR SLURM!
