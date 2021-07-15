@@ -172,43 +172,52 @@ function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensembl
     evals = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
     eon = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
 
+    done = 0
+    todo = 0
+
     interaction = PowerLaw(α)
     spin_ops = symmetrize_op.(op_list(σx/2, N))
     field_operator = sum(spin_ops)
-    ψ0 = vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:N))))
+    ψ0 = SharedArray(vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:N)))))
 
     logmsg("ToDo: rho=$ρs")
     logmsg("with $nshots realizations and  $(length(fields)) field values")
-    @sync for (i, ρ) in enumerate(ρs)
-        logmsg("rho = $ρ")
-        geom = geometry_from_density(geometry, ρ, N, dim)
-        ensemble_J_mean = 0
-        if scale_field == :ensemble
-            # compute the ensembles mean J
-            ensemble_J_mean = _ensemble_J_mean(interaction, geom, data(posdata)[:,:,:,i])
-            logmsg("Ensemble J mean for rho_$i=$ρ: $ensemble_J_mean")
-        end
-        for shot in 1:nshots
-            worker = next_worker()
-            J = interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
-            model = symmetrize_op(xxzmodel(J, -0.73))
-            normed_field_values = fields
-            if scale_field == :shot
-                normed_field_values *= sum(J)/N
-            elseif scale_field == :ensemble
-                normed_field_values *= ensemble_J_mean
+    @sync begin
+        for (i, ρ) in enumerate(ρs)
+            logmsg("rho = $ρ"; doflush=false) # flush yields so taks start running
+            geom = geometry_from_density(geometry, ρ, N, dim)
+            ensemble_J_mean = 0
+            if scale_field == :ensemble
+                # compute the ensembles mean J
+                ensemble_J_mean = _ensemble_J_mean(interaction, geom, data(posdata)[:,:,:,i])
+                logmsg("Ensemble J mean for rho_$i=$ρ: $ensemble_J_mean"; doflush=false)
             end
-
-            @async begin
-                logmsg(@sprintf("#rho =%2i - %03i/%03i on #%02i")
-                remotecall_wait(_compute_core!, worker, i, shot, nshots, worker),
-                view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
-                model, normed_field_values, field_operator, spin_ops, ψ0)
+            for shot in 1:nshots
+                todo += 1
+                worker = next_worker()
+                @async begin
+                    J = interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
+                    model = symmetrize_op(xxzmodel(J, -0.73))
+                    normed_field_values = fields
+                    if scale_field == :shot
+                        normed_field_values *= sum(J)/N
+                    elseif scale_field == :ensemble
+                        normed_field_values *= ensemble_J_mean
+                    end
+                    #logmsg(@sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker))
+                    remotecall_wait(_compute_core!, worker,
+                        view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
+                        model, normed_field_values, field_operator, spin_ops, ψ0)
+                    done += 1
+                    logmsg(@sprintf("Done %03i/%03i - #rho =%2i - %03i/%03i on #%02i", done, todo, i, shot, nshots, worker))
+                end
+                #logmsg("Scheduled #$todo")
+                # @spawnat worker _compute_core_parallel!(@sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker),
+                #     view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
+                #     model, normed_field_values, field_operator, spin_ops, ψ0)
             end
-            # @spawnat worker _compute_core_parallel!(@sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker),
-            #     view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
-            #     model, normed_field_values, field_operator, spin_ops, ψ0)
         end
+        logmsg("All queued")
     end
     EDData(geometry, dim, α, ρs, fields, sdata(eev), sdata(eon), sdata(evals))
 end

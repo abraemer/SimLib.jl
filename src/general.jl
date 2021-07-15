@@ -1,6 +1,6 @@
-function logmsg(msg...)
+function logmsg(msg...; doflush=true)
     println("[$(now())] $(join(msg, " | "))")
-    flush(stdout)
+    doflush && flush(stdout)
 end
 
 function path_prefix()
