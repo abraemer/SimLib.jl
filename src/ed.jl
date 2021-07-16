@@ -236,12 +236,12 @@ end
 
 function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, field_values, field_operator, scale_field, operators, ψ0)
     matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate
+    vec = zeros(eltype(ψ0), size(ψ0))
     N = size(interactions, 1)
     nshots = size(interactions, 3)
     logmsg("Range: $(_chunk_flat(interactions)) on #0$(indexpids(interactions))")
     for index in _chunk_flat(interactions)
         i, shot = _flat_to_indices(index, nshots)
-        logmsg("$index -> $shot, $i")
         J = @view interactions[:,:, shot, i]
         model = real.(symmetrize_op(xxzmodel(J, -0.73)))
         normed_field_values = field_values
@@ -260,7 +260,7 @@ function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, fie
                 end
             end
             evals_out[:, shot, k, i] = evals
-            eon_out[:, shot, k, i] .= abs2.(evecs' * ψ0) # this allocates the most right now!
+            eon_out[:, shot, k, i] .= abs2.(mul!(vec, evecs', ψ0)) # this allocates the most right now!
         end
         logmsg(@sprintf("Done %03i - #rho =%2i - %03i/%03i on #%02i", index, i, shot, nshots, indexpids(interactions)))
     end
