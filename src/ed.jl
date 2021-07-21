@@ -163,7 +163,7 @@ function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensembl
     
     next_worker = let nworkers = length(processes); worker_index = 0;
         function inner()
-            next_index = mod(worker_index, nworkers)+1
+            next_index = mod1(worker_index, nworkers)
             worker_index += 1
             processes[next_index]
         end
@@ -225,8 +225,10 @@ function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensembl
 end
 
 
-_flat_to_indices(index, nshots) = (div(index-1, nshots)+1, rem(index-1, nshots)+1)
+_flat_to_indices(index, nshots) = fldmod1(index, nshots)
 function _chunk_flat(interactions)
+    # determine the index range this worker should work on by
+    # splitting the interaction array jointly along ρ and shot axes
     idx = indexpids(interactions)
     nchunks = length(procs(interactions))
     total = size(interactions, 3) * size(interactions, 4) # nshots*nρs
