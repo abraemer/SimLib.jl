@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ c63ad93a-bbe0-4771-a2c7-fca17ac5cb44
-data_zero_field = SimLib.ED.load("/home/adrian/results/julia-cusp/zero_field/ed_noisy_chain_pbc_1d_alpha_6.0_N_13.jld2");
+data_zero_field = SimLib.ED.load("/home/adrian/results/julia-cusp/field_section/data/ed_noisy_chain_pbc_1d_alpha_6.0_N_13-k_6.jld2");
 
 # ╔═╡ bdab9d57-4c6e-4e55-8037-e29ec55c792c
 #data = SimLib.ED.load(path_prefix(), :noisy_chain_pbc, 9, 1, 6);

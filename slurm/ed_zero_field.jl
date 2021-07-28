@@ -2,7 +2,7 @@
 # ########## Begin Slurm header ########## 
 #SBATCH --nodes=1 
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=06:00:00 
+#SBATCH --time=12:00:00 
 #SBATCH --mem=90gb 
 #SBATCH --cpus-per-task=48
 #SBATCH --job-name=zero-field
@@ -12,7 +12,7 @@
 # load modules
 # not needed - julia installed locally
 
-exec julia --color=no --threads=1 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
+exec julia --color=no --procs 50 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
 =#
 println("zero_field.slurm")
 

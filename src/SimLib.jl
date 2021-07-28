@@ -6,7 +6,7 @@ using LinearAlgebra
 using XXZNumerics
 
 
-export logmsg, path_prefix, parse_geometry, geometry_from_density
+export logmsg, path_prefix, parse_geometry, geometry_from_density, levelspacingratio
 
 include("general.jl")
 include("positions.jl")

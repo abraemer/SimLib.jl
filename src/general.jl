@@ -52,3 +52,18 @@ const SAFE_RHO_RANGES = (;box     = [(0.1, 1.25), (0.1, 1.7), (0.1,2.05)],
                           box_pbc = [(0.1, 1.25), (0.1, 1.7), (0.1,2.05)],
                           noisy_chain_pbc = [(1.0, 1.99)],
                           noisy_chain     = [(1.0, 1.99)])
+
+function levelspacingratio(levels; center_region=1.0)
+    sizes = size(levels)
+    L = sizes[1]
+    cutoff = floor(Int, (L*(1-center_region)/2))
+    range = (1+cutoff)+2:L-cutoff
+    res = Array{Float64, length(sizes)}(undef, length(range), sizes[2:end]...)
+    for I in CartesianIndices(axes(levels)[2:end])
+        for (i,j) in enumerate(range)
+            ratio = (levels[j-1,I]-levels[j,I])/(levels[j-2,I]-levels[j-1,I])
+            res[i, I] = min(ratio, 1/ratio)
+        end
+    end
+    res
+end
