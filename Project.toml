@@ -16,6 +16,7 @@ XXZNumerics = "df0c8232-4a8d-40d6-8487-e9f918bc1c27"
 [compat]
 JLD2 = "0.4"
 julia = "1.6"
+XXZNumerics = "0.2"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

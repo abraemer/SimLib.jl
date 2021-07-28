@@ -4,8 +4,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=00:05:00 
 #SBATCH --mem=1gb 
-#SBATCH --job-name=positions
-#SBATCH --output="logs/pos-slurm-%j.out"
+#SBATCH --cpus-per-task=48
+#SBATCH --job-name=template
+#SBATCH --output="logs/template-%j.out"
 ########### End Slurm header ##########
 #=
 # load modules

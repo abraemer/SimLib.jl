@@ -19,11 +19,16 @@ begin
 	Pkg.activate(joinpath(@__DIR__))
 	using SimLib, Plots, PlutoUI, Statistics, LinearAlgebra, LaTeXStrings, XXZNumerics
 	gr()
+	LinearAlgebra.BLAS.set_num_threads(8)
 	cd(joinpath(@__DIR__, ".."))
 end
 
+# ╔═╡ c63ad93a-bbe0-4771-a2c7-fca17ac5cb44
+data_zero_field = SimLib.ED.load("/home/adrian/results/julia-cusp/zero_field/ed_noisy_chain_pbc_1d_alpha_6.0_N_13.jld2");
+
 # ╔═╡ bdab9d57-4c6e-4e55-8037-e29ec55c792c
-data = SimLib.ED.load(SimLib.path_prefix(), :noisy_chain_pbc, 9, 1, 6);
+#data = SimLib.ED.load(path_prefix(), :noisy_chain_pbc, 9, 1, 6);
+data = SimLib.ED.load("/home/adrian/results/julia-cusp/", :noisy_chain_pbc, 13, 1, 6);
 
 # ╔═╡ 5493eab2-85ec-4805-9f2f-a6a447f9d16b
 md"""
@@ -62,93 +67,168 @@ begin
 		title="Mag vs. Energy", xlabel="Energy", ylabel="Magnetization")
 end
 
-# ╔═╡ b1ee0e64-ce63-443d-b5ec-7448b9c20174
-size(data.eon)
-
-# ╔═╡ f19e17d2-26da-4d15-bd23-d666ce0cb066
-sum(data.eon) ≈ reduce(*, size(data.eon))/size(data.eon,1)
-
-# ╔═╡ 68b9acb2-5cf9-4576-924e-2699397574ee
-ψ0 = vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:10))))
-
-# ╔═╡ 66f9f163-c074-4e9e-941b-c35eec7a0dfb
-model = real.(symmetrize_op(xxzmodel(10,1.0, -0.73)));
-
-# ╔═╡ 8d8d6f5d-6360-48f7-a298-fc75e8bed7db
-spin_ops = real.(symmetrize_op.(op_list(σx/2, 10)))
-
-# ╔═╡ 634fd7ef-dee7-4917-b237-ca59c4e537f4
-field_operator = sum(spin_ops)
-
-# ╔═╡ 94418bc7-1a88-4eb5-a0bd-b11b55fdbfc6
-E = eigen!(Hermitian(Matrix(model-1*field_operator)));
-
-# ╔═╡ f74b4aeb-4899-4f9b-862a-b38d8dda6f31
-sum(abs2.((E.vectors') * ψ0))
-
-# ╔═╡ dfe5782a-fce2-409d-b7eb-1aabfdcaa18b
-size(xxzmodel(10,1,-0.73))d
-
-# ╔═╡ 20ab3428-48bb-4a93-90ad-c961cfea3b64
-let N=10,
-	n=2^(N-1),
-	forward = 1:n,
-	bacward = 2^N:-1:n+1,
-	H = xxzmodel(N,1,-0.73)
-	@show(@views H[forward,forward] == H[bacward,bacward])
-	@show(@views H[forward,bacward] == H[bacward,forward])
+# ╔═╡ a5293de9-b76a-4a38-80ed-c4794e56959e
+begin
+	wigner(x; β=1, Z_β=8/27) = 1/Z_β * (x+x^2)^β / (1+x+x^2)^(1+1.5β)
+	poisson(r) = 1/(1+r)^2
 end
 
-# ╔═╡ c14bc300-4fec-4e49-89b1-d851c37da744
-res = abs2.(mul!(zeros(eltype(ψ0), size(ψ0)), E.vectors', ψ0))
+# ╔═╡ 4ca67e8c-f712-43a4-ae6a-27d51c6c88ef
+let	N = size(data.evals, 1),
+	middle = Int(N/2-N/4):Int(N/2+N/4)-1,
+	cutoff = 1,
+	npoints = 100,
+	xspace = 0:(cutoff/(npoints-1)):cutoff,
+	levels = data.evals[middle,:, fieldIndex, rhoIndex],
+	spacings = levels[2:end,:] .- levels[1:end-1,:],
+	ratios_raw = sort!((spacings[2:end,:] ./ spacings[1:end-1,:])[:]),
+	mask = (ratios_raw .< cutoff),
+	ratios = min.(ratios_raw, 1 ./ ratios_raw),
+	wigner_prediction = wigner.(xspace),
+	poisson_prediction = poisson.(xspace),
+	scale = sum(mask)/length(mask)
+	
+	histogram(ratios[mask]; bins=npoints, normalize=true)
+	plot!(xspace, poisson_prediction/scale; width=2, label="Poisson")
+	plot!(xspace,  wigner_prediction/scale; width=2, label="Wigner")
+end
 
-# ╔═╡ a491cd5b-e610-4b8c-9a57-8e47494c9c6d
-res[argmax(res)], argmax(res)
-
-# ╔═╡ a208de1a-c167-42ed-af6c-1828a61f7d53
-function chainJ(N)
+# ╔═╡ 27a1bca1-bbfc-41ef-a6f1-6b1e97ccad4b
+function chainJ(N, α)
 	J = collect(1.0:N) .- collect(1:N)'
 	J[diagind(J)] .= 1
-	J .^= -6
+	J .^= -α
 	J[diagind(J)] .= 0
 	J
 end
 
-# ╔═╡ d5e6d747-dfb4-418c-b00f-955d0de50994
-let r = -1.5:0.1:1, 
-	field_op = fieldterm(10, σx),
-	J = chainJ(10),
-	model = real.(symmetrize_op(xxzmodel(J, -0.73))),
-	ψ0 = vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:10))))
-	p = plot(;title="Test", legend=nothing)
-	for h in r
-		plot!(h .+ abs2.(eigen!(Hermitian(Matrix(model + 2h*field_operator))).vectors' * ψ0))
+# ╔═╡ 98590bcc-d032-4b0b-bfbf-39131093e7b2
+function levelspacingratio(levels; center_only=false)
+	sizes = size(levels)
+	L = sizes[1]
+	range = center_only ? (div(L,4)+2:3*div(L,4)) : 3:L
+	res = Array{Float64, length(sizes)}(undef, length(range), sizes[2:end]...)
+	for I in CartesianIndices(axes(levels)[2:end])
+		for (i,j) in enumerate(range)
+			ratio = (levels[j-1,I]-levels[j,I])/(levels[j-2,I]-levels[j-1,I])
+			res[i, I] = min(ratio, 1/ratio)
+		end
 	end
+	res
+end
+
+# ╔═╡ c5f003a8-b94a-4321-9c94-476cefa2702c
+function levelspacingratio_mean(levels; center_only=false)
+	sizes = size(levels)
+	L = sizes[1]
+	range = center_only ? (div(L,4)+2:3*div(L,4)) : 3:L
+	@show range
+	res = Array{Float64, length(sizes)}(undef, 1, sizes[2:end]...)
+	for I in CartesianIndices(axes(levels)[2:end])
+		for j in range
+			ratio = (levels[j-1,I]-levels[j,I])/(levels[j-2,I]-levels[j-1,I])
+			res[I] += min(ratio, 1/ratio)
+		end
+	end
+	res ./= length(range)
+end
+
+# ╔═╡ e57b2f9f-5453-4913-9ec9-fc0405e3a52e
+rAtZero = let posdata = SimLib.Positions.load("/home/adrian/results/julia-cusp/", :noisy_chain_pbc, 13, 1),
+	shots = SimLib.Positions.shots(posdata),
+	interaction = PowerLaw(6),
+	ρs = SimLib.Positions.ρs(posdata),
+	geom = SimLib.Positions.geometry(posdata),
+	symm = SpinFlip(zbasis(13,5)),
+	res = Matrix{Float64}(undef, shots, length(ρs))
+	for (i, ρ) in enumerate(ρs)
+		for shot in 1:shots
+			g = geometry_from_density(geom, ρ, 13, 1)
+			J = interaction_matrix(interaction, g, SimLib.Positions.data(posdata)[:,:,shot,i])
+			levels = eigvals!(Hermitian(Matrix(symmetrize_op(symm, xxzmodel(J,-0.73)))))
+			res[shot,i] = levelspacingratio_mean(levels; center_only=true)[1]
+			println("ρ: $i Shot: $shot")
+		end
+	end
+	res
+end
+
+# ╔═╡ 2fa6a9c7-c0e7-4ac6-ba68-a6522349fb77
+let N = SimLib.ED.system_size(data),
+	nHilbert = size(data.evals,1),
+	ratios = levelspacingratio(data.evals; center_only=true),
+	ratios_zero_field = levelspacingratio(data_zero_field.evals; center_only=true),
+	r_mean = dropdims(mean(ratios; dims=(1,2)); dims=(1,2)),
+	r_std  = dropdims(std(ratios; dims=(1,2)); dims=(1,2)) / (size(ratios,2))^0.5,
+	r_zero_field = dropdims(mean(ratios_zero_field; dims=(1,2)); dims=(1,2)),
+	r_zero_field_std  = dropdims(std(ratios_zero_field; dims=(1,2)); dims=(1,2)) / (size(ratios,2))^0.5
+	
+	# take <r> per shot and compute stddev on those
+	
+	p = plot(;title="Mean level spacing ratios", legend=:left)
+	for (i, ρ) in enumerate(data.ρs)
+		plot!(data.fields, r_mean[:,i]; label="ρ=$ρ")#, ribbon=r_std[:,i])
+		hline!(r_zero_field[:,i]; label="ρ=$ρ", ls=:dot, ribbon=std(rAtZero[:,i])/10,
+			color=p.series_list[end].plotattributes[:seriescolor])
+	end
+	hline!([0.5295]; label="GOE", ls=:dash, width=2)
+	hline!([2 * log(2)-1]; label="Poisson", ls=:dash, width=2)
+	#plot!(data.fields, rZBlock; label="single z-block", ls=:dot, width=2)
 	p
 end
 
-# ╔═╡ c64848bc-d819-40d3-b5cb-6b61b965ef1f
-chainJ(10)
+# ╔═╡ e1ce4ac8-2784-4245-9fdb-4aed964f94d4
+function levelspacinghistogram(levels; center_only=false, bins=100)
+	sizes = size(levels)
+	res = zeros(Int, bins, sizes[2:end]...)
+	for I in CartesianIndices(axes(levels)[2:end])
+		for j in 3:sizes[1]
+			ratio_raw = (levels[j-1,I]-levels[j,I])/(levels[j-2,I]-levels[j-1,I])
+			ratio = min(ratio_raw, 1/ratio_raw)
+			bin = trunc(Int, ratio*bins)+1 # since 0<=ratio <= 1, just multiply
+			res[bin, I] += 1
+		end
+	end
+	res
+end
+
+# ╔═╡ 283aed70-001b-4958-a169-3d31555d793b
+#rZBlock = let N = 13,
+#	block_inds = symm_sz_block(6,N),
+#	H = symmetrize_op(xxzmodel(chainJ(N, 6), -0.73)),
+#	Hblock = H[block_inds, block_inds],
+#	field_op = symmetrize_op(fieldterm(N, σx))[block_inds, block_inds]
+#	mean.(levelspacingratio(eigvals!(Hermitian(Matrix(Hblock+h*field_op)))) for h in data.fields)
+#end
+
+# ╔═╡ 3b393f07-380e-45a7-bd09-4140bd40c42b
+
+
+# ╔═╡ 7742a2c5-89ba-4498-893a-1c406fc4233e
+function shiftIndex(i, N; by=1)
+	((i << by) & (2^N-1)) + (i >> (N-by))
+end
+
+# ╔═╡ ecaae0ca-8750-4136-9b76-f7872534591e
+shiftIndex.(collect(0:2^3-1), 3; by=3)
 
 # ╔═╡ Cell order:
 # ╠═5e92c53e-e948-11eb-17ce-5b1baf22cbf9
+# ╠═c63ad93a-bbe0-4771-a2c7-fca17ac5cb44
 # ╠═bdab9d57-4c6e-4e55-8037-e29ec55c792c
 # ╟─5493eab2-85ec-4805-9f2f-a6a447f9d16b
 # ╟─d4fb5f55-37ac-49ab-b055-cb8a326cb3c9
 # ╟─2b14057b-997b-45ad-a855-660165a55a1d
-# ╠═749e5dde-3b8f-4b3d-95b1-427d270412df
-# ╠═b1ee0e64-ce63-443d-b5ec-7448b9c20174
-# ╠═f19e17d2-26da-4d15-bd23-d666ce0cb066
-# ╠═68b9acb2-5cf9-4576-924e-2699397574ee
-# ╠═66f9f163-c074-4e9e-941b-c35eec7a0dfb
-# ╠═8d8d6f5d-6360-48f7-a298-fc75e8bed7db
-# ╠═634fd7ef-dee7-4917-b237-ca59c4e537f4
-# ╠═94418bc7-1a88-4eb5-a0bd-b11b55fdbfc6
-# ╠═f74b4aeb-4899-4f9b-862a-b38d8dda6f31
-# ╠═dfe5782a-fce2-409d-b7eb-1aabfdcaa18b
-# ╠═20ab3428-48bb-4a93-90ad-c961cfea3b64
-# ╠═c14bc300-4fec-4e49-89b1-d851c37da744
-# ╠═a491cd5b-e610-4b8c-9a57-8e47494c9c6d
-# ╠═d5e6d747-dfb4-418c-b00f-955d0de50994
-# ╠═a208de1a-c167-42ed-af6c-1828a61f7d53
-# ╠═c64848bc-d819-40d3-b5cb-6b61b965ef1f
+# ╟─749e5dde-3b8f-4b3d-95b1-427d270412df
+# ╟─4ca67e8c-f712-43a4-ae6a-27d51c6c88ef
+# ╠═2fa6a9c7-c0e7-4ac6-ba68-a6522349fb77
+# ╠═e57b2f9f-5453-4913-9ec9-fc0405e3a52e
+# ╟─a5293de9-b76a-4a38-80ed-c4794e56959e
+# ╟─27a1bca1-bbfc-41ef-a6f1-6b1e97ccad4b
+# ╠═98590bcc-d032-4b0b-bfbf-39131093e7b2
+# ╠═c5f003a8-b94a-4321-9c94-476cefa2702c
+# ╠═e1ce4ac8-2784-4245-9fdb-4aed964f94d4
+# ╠═283aed70-001b-4958-a169-3d31555d793b
+# ╠═3b393f07-380e-45a7-bd09-4140bd40c42b
+# ╠═ecaae0ca-8750-4136-9b76-f7872534591e
+# ╠═7742a2c5-89ba-4498-893a-1c406fc4233e

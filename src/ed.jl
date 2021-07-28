@@ -59,17 +59,18 @@ geometry(eddata::EDData) = eddata.geometry
 dimension(eddata::EDData) = eddata.dim
 
 ## Saving/Loading
-ed_datapath(prefix, geometry, N, dim, α) = joinpath(prefix, "data", @sprintf("ed_%s_%id_alpha_%.1f_N_%02i.jld2", geometry, dim, α, N))
-ed_datapath(prefix, eddata::EDData) = ed_datapath(prefix, geometry(eddata), system_size(eddata), dimension(eddata), α(eddata))
+DEFAULT_FOLDER = "data"
+ed_datapath(prefix, geometry, N, dim, α; folder=DEFAULT_FOLDER, suffix="") = joinpath(prefix, folder, @sprintf("ed_%s_%id_alpha_%.1f_N_%02i%s.jld2", geometry, dim, α, N, suffix))
+ed_datapath(prefix, eddata::EDData; folder=DEFAULT_FOLDER, suffix="") = ed_datapath(prefix, geometry(eddata), system_size(eddata), dimension(eddata), α(eddata); folder, suffix)
 
-function save(prefix, eddata::EDData)
-    path = ed_datapath(prefix, eddata)
+function save(prefix, eddata::EDData; folder=DEFAULT_FOLDER, suffix="")
+    path = ed_datapath(prefix, eddata; folder, suffix)
     mkpath(dirname(path))
     JLD2.jldsave(path; eddata)
 end
 
 load(path) = JLD2.load(path)["eddata"]
-load(prefix, geometry, N, dim, α) = load(ed_datapath(prefix, geometry, N, dim, α))
+load(prefix, geometry, N, dim, α; folder=DEFAULT_FOLDER, suffix="") = load(ed_datapath(prefix, geometry, N, dim, α; folder, suffix))
 
 ## main function
 function _ensemble_J_mean(interaction, geometry, positions)
@@ -149,17 +150,13 @@ function _compute_core_parallel!(msg, eev_out, evals_out, eon_out, model, field_
     _compute_core!(eev_out, evals_out, eon_out, model, field_values, field_operator, operators, ψ0)
 end
 
-function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensemble, processes=Int[])
+function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensemble, processes=workers(), symmetry=FullZBasis(Positions.system_size(posdata)))
     N = Positions.system_size(posdata)
     dim = Positions.dimension(posdata)
     ρs = Positions.ρs(posdata)
     nshots = Positions.shots(posdata)
-    hilbert_space_dim = 2^(N-1)
+    hilbert_space_dim = basis_size(symmetry)
     geometry = Positions.geometry(posdata)
-
-    if length(processes) == 0
-        processes = workers()        
-    end
     
     next_worker = let nworkers = length(processes); worker_index = 0;
         function inner()
@@ -178,9 +175,9 @@ function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensembl
     todo = 0
 
     interaction = PowerLaw(α)
-    spin_ops = symmetrize_op.(op_list(σx/2, N))
+    spin_ops = symmetrize_op.(Ref(symmetry), op_list(σx/2, N))
     field_operator = sum(spin_ops)
-    ψ0 = SharedArray(vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:N)))))
+    ψ0 = SharedArray(vec(symmetrize_state(symmetry, foldl(⊗, ((up+down)/√2 for _ in 1:N)))))
 
     logmsg("ToDo: rho=$ρs")
     logmsg("with $nshots realizations and  $(length(fields)) field values")
@@ -199,7 +196,7 @@ function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensembl
                 worker = next_worker()
                 @async begin
                     J = interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
-                    model = symmetrize_op(xxzmodel(J, -0.73))
+                    model = symmetrize_op(symmetry, xxzmodel(J, -0.73))
                     normed_field_values = fields
                     if scale_field == :shot
                         normed_field_values *= sum(J)/N
@@ -236,7 +233,7 @@ function _chunk_flat(interactions)
     (splits[idx]+1):splits[idx+1]
 end
 
-function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, field_values, field_operator, scale_field, operators, ψ0)
+function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, field_values, field_operator, scale_field, operators, ψ0, symmetry)
     matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate
     vec = zeros(eltype(ψ0), size(ψ0))
     N = size(interactions, 1)
@@ -245,7 +242,7 @@ function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, fie
     for index in _chunk_flat(interactions)
         i, shot = _flat_to_indices(index, nshots)
         J = @view interactions[:,:, shot, i]
-        model = real.(symmetrize_op(xxzmodel(J, -0.73)))
+        model = real.(symmetrize_op(symmetry, xxzmodel(J, -0.73)))
         normed_field_values = field_values
         if scale_field == :shot
             normed_field_values *= sum(J)/N
@@ -268,12 +265,12 @@ function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, fie
     end
 end
 
-function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemble, processes=Int[])
+function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemble, processes=workers(), symmetry=FullZBasis(Positions.system_size(posdata)))
     N = Positions.system_size(posdata)
     dim = Positions.dimension(posdata)
     ρs = Positions.ρs(posdata)
     nshots = Positions.shots(posdata)
-    hilbert_space_dim = 2^(N-1)
+    hilbert_space_dim = basis_size(symmetry)
     geometry = Positions.geometry(posdata)
 
     if length(processes) == 0
@@ -286,9 +283,9 @@ function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemb
     eon = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
 
     interaction = PowerLaw(α)
-    spin_ops = real.(symmetrize_op.(op_list(σx/2, N)))
+    spin_ops = real.(symmetrize_op.(Ref(symmetry), op_list(σx/2, N)))
     field_operator = sum(spin_ops)
-    ψ0 = SharedArray(vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:N)))))
+    ψ0 = SharedArray(vec(symmetrize_state(symmetry, foldl(⊗, ((up+down)/√2 for _ in 1:N)))))
 
     interactions = SharedArray{Float64}((N,N,nshots,length(ρs)))
     logmsg("Calculating interactions")
@@ -303,7 +300,7 @@ function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemb
     logmsg("with $nshots realizations and  $(length(fields)) field values")
     @sync for p in processes
         @async remotecall_wait(_compute_core_parallel2!, p,
-            eev, evals, eon, interactions, fields, field_operator, scale_field, spin_ops, ψ0)
+            eev, evals, eon, interactions, fields, field_operator, scale_field, spin_ops, ψ0, symmetry)
     end
     EDData(geometry, dim, α, ρs, fields, sdata(eev), sdata(eon), sdata(evals))
 end

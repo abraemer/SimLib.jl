@@ -638,9 +638,9 @@ version = "0.14.1"
 
 [[Plots]]
 deps = ["Base64", "Contour", "Dates", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs"]
-git-tree-sha1 = "f3d4d35b8cb87adc844c05c722f505776ac29988"
+git-tree-sha1 = "1bbbb5670223d48e124b388dee62477480e23234"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.19.2"
+version = "1.19.3"
 
 [[PlutoUI]]
 deps = ["Base64", "Dates", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "Suppressor"]
@@ -882,11 +882,11 @@ version = "1.1.34+0"
 
 [[XXZNumerics]]
 deps = ["LineSearches", "LinearAlgebra", "Optim", "Random", "SparseArrays", "Statistics"]
-git-tree-sha1 = "73f824f830c6385a6dbb36d7abf668c4a5e3ae2d"
+git-tree-sha1 = "a3c0b219568de16ce9be3d36c42bb57cfd92d078"
 repo-rev = "main"
 repo-url = "../../XXZNumerics"
 uuid = "df0c8232-4a8d-40d6-8487-e9f918bc1c27"
-version = "0.1.1"
+version = "0.2.1"
 
 [[Xorg_libX11_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libxcb_jll", "Xorg_xtrans_jll"]
