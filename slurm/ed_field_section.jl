@@ -2,11 +2,11 @@
 # ########## Begin Slurm header ########## 
 #SBATCH --nodes=1 
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=06:00:00 
+#SBATCH --time=2:00:00 
 #SBATCH --mem=90gb 
 #SBATCH --cpus-per-task=48
-#SBATCH --job-name=zero-field
-#SBATCH --output="logs/zero-field-%j.out"
+#SBATCH --job-name=field-section
+#SBATCH --output="logs/field-section-%j.out"
 ########### End Slurm header ##########
 #=
 # load modules
@@ -14,11 +14,11 @@
 
 exec julia --color=no --threads=1 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
 =#
-println("zero_field.slurm")
+println("ed_field_section.jl")
 
 # check ARGS length and print usage if wrong
-if length(ARGS) < 4
-    println("Usage: zero_field.jl geom N dim alpha")
+if length(ARGS) != 5
+    println("Usage: ed_field_section.jl geom N dim alpha field")
     exit()
 end
 
@@ -63,17 +63,17 @@ const GEOMETRY = Symbol(lowercase(ARGS[1]))
 const N = parse(Int, ARGS[2])
 const DIM = parse(Int, ARGS[3])
 const ALPHA = parse(Float64, ARGS[4])
+const FIELD = parse(Float64, ARGS[5])
 const ρs = [0.5:0.05:1.95..., 1.99]
 const SHOTS = 100
-const BLOCK = div(N-1,2)
 
 @show GEOMETRY
 @show N
 @show DIM
 @show ALPHA
+@show FIELD
 @show ρs
 @show SHOTS
-@show BLOCK
 
 ## functions
 function createAndSave(shots, geom, N, dim, ρs)
@@ -111,9 +111,9 @@ logmsg("Starting!")
     logmsg("Preparing position data")
     posdata = preparePosdata(GEOMETRY, N, DIM, ρs)
     logmsg("Running ED")
-    eddata = ED.run_ed_parallel2(posdata, ALPHA, [0]; symmetry=ZBlockBasis(N, BLOCK)) # choose biggest block
+    eddata = ED.run_ed_parallel2(posdata, ALPHA, [FIELD])
     logmsg("Saving")
-    ED.save(PREFIX, eddata; suffix="-k_$BLOCK")
+    ED.save(PREFIX, eddata; suffix="-field_$FIELD")
     logmsg("Done!")
 end
 ## REMEMBER TO SET RESOURCE HEADER FOR SLURM!
