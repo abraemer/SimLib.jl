@@ -76,7 +76,7 @@ const SHOTS = 100
 ## functions
 function createAndSave(shots, geom, N, dim, ρs)
     logmsg("Creating Position data with $shots shots, $geom N=$N $(dim)d and $(length(ρs))")
-    data = PositionData(geom, ρs, shots, N, dim)
+    data = Positions.PositionData(geom, ρs, shots, N, dim)
     Positions.save(PREFIX, Positions.create_positions!(data))
     data
 end
