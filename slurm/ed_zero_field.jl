@@ -41,6 +41,8 @@ if nprocs() == 1 # we run local so go easy on amount of workers
     addprocs(4; topology=:master_worker)
 end
 
+println("#workers:                   $(nprocs())")
+
 # using Distributed # not needed when started with -p
 @everywhere import Pkg
 @everywhere Pkg.activate(".")
