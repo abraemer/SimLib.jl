@@ -13,4 +13,10 @@ include("positions.jl")
 include("ed.jl")
 include("ensembles.jl")
 
+using .Positions
+export Positions, PositionData, create_positions!
+
+using .ED
+export ED, EDData, run_ed_parallel2
+
 end

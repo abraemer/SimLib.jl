@@ -84,7 +84,7 @@ logmsg("Starting!")
     SimLib.logmsg("Saving")
     ED.save(PREFIX, eddata)
     SimLib.logmsg("Ensemble prediction")
-    SimLib.Ensembles.save(PREFIX, SimLib.Ensembles.ensemple_predictions(eddata))
+    SimLib.Ensembles.save(PREFIX, SimLib.Ensembles.ensemble_predictions(eddata))
     logmsg("Done!")
 end
 ## REMEMBER TO SET RESOURCE HEADER FOR SLURM!

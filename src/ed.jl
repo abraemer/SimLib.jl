@@ -233,24 +233,17 @@ function _chunk_flat(interactions)
     (splits[idx]+1):splits[idx+1]
 end
 
-function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, field_values, field_operator, scale_field, operators, ψ0, symmetry)
+function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, field_values, field_operator, operators, ψ0, symmetry)
     matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate
     vec = zeros(eltype(ψ0), size(ψ0))
-    N = size(interactions, 1)
     nshots = size(interactions, 3)
     logmsg("Range: $(_chunk_flat(interactions)) on #0$(indexpids(interactions))")
     for index in _chunk_flat(interactions)
         i, shot = _flat_to_indices(index, nshots)
         J = @view interactions[:,:, shot, i]
-        model = real.(symmetrize_op(symmetry, xxzmodel(J, -0.73)))
-        normed_field_values = field_values
-        if scale_field == :shot
-            normed_field_values *= sum(J)/N
-        elseif scale_field == :ensemble
-            normed_field_values *= sum(@view interactions[:,:,:,i])/nshots/N
-        end
+        model = real.(symmetrize_op(symmetry, xxzmodel(J, -0.73)))        
         
-        for (k, h) in enumerate(normed_field_values)
+        for (k, h) in enumerate(field_values)
             copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
             evals, evecs = eigen!(Hermitian(matrix))
             for (l, evec) in enumerate(eachcol(evecs))
@@ -293,6 +286,12 @@ function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemb
         geom = geometry_from_density(geometry, ρs[i], N, dim)
         for shot in 1:nshots
             interactions[:,:, shot, i] .= interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
+            if scale_field == :shot
+                interactions[:,:, shot, i] ./= sum(view(interactions, :,:, shot, i))/N
+            end
+        end
+        if scale_field == :ensemble
+            interactions[:,:, :, i] ./= sum(@view interactions[:,:,:,i])/nshots/N
         end
     end
 
@@ -300,7 +299,7 @@ function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemb
     logmsg("with $nshots realizations and  $(length(fields)) field values")
     @sync for p in processes
         @async remotecall_wait(_compute_core_parallel2!, p,
-            eev, evals, eon, interactions, fields, field_operator, scale_field, spin_ops, ψ0, symmetry)
+            eev, evals, eon, interactions, fields, field_operator, spin_ops, ψ0, symmetry)
     end
     EDData(geometry, dim, α, ρs, fields, sdata(eev), sdata(eon), sdata(evals))
 end
