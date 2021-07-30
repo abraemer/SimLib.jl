@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ c63ad93a-bbe0-4771-a2c7-fca17ac5cb44
-data_zero_field = SimLib.ED.load("/home/adrian/results/julia-cusp/field_section/data/ed_noisy_chain_pbc_1d_alpha_6.0_N_13-k_6.jld2");
+data_zero_field = SimLib.ED.load("/home/adrian/results/julia-cusp/field-section/data/ed_noisy_chain_pbc_1d_alpha_6.0_N_13-k_6.jld2").evals[:,:,:,[11,21,end]];
 
 # ╔═╡ bdab9d57-4c6e-4e55-8037-e29ec55c792c
 #data = SimLib.ED.load(path_prefix(), :noisy_chain_pbc, 9, 1, 6);
@@ -67,6 +67,31 @@ begin
 		title="Mag vs. Energy", xlabel="Energy", ylabel="Magnetization")
 end
 
+# ╔═╡ 2fa6a9c7-c0e7-4ac6-ba68-a6522349fb77
+let N = SimLib.ED.system_size(data),
+	nHilbert = size(data.evals,1),
+	ratios = levelspacingratio(data.evals; center_region=0.75),
+	ratios_zero_field = levelspacingratio(data_zero_field; center_region=0.75),
+	r_mean = dropdims(mean(ratios; dims=(1,2)); dims=(1,2)),
+	r_std  = dropdims(std(ratios; dims=(1,2)); dims=(1,2)) / (size(ratios,2))^0.5,
+	r_zero_field = dropdims(mean(ratios_zero_field; dims=(1,2)); dims=(1,2)),
+	r_zero_field_std  = dropdims(std(ratios_zero_field; dims=(1,2)); dims=(1,2)) / (size(ratios,2))^0.5
+	
+	# take <r> per shot and compute stddev on those
+	
+	p = plot(;title="Mean level spacing ratios", legend=:left)
+	for (i, ρ) in enumerate(data.ρs)
+		plot!(data.fields, r_mean[:,i]; label="ρ=$ρ")#, ribbon=r_std[:,i])
+		hline!(r_zero_field[:,i]; label="ρ=$ρ", ls=:dot, 
+			ribbon=r_zero_field_std[:,i]/10,
+			color=p.series_list[end].plotattributes[:seriescolor])
+	end
+	hline!([0.5295]; label="GOE", ls=:dash, width=2)
+	hline!([2 * log(2)-1]; label="Poisson", ls=:dash, width=2)
+	#plot!(data.fields, rZBlock; label="single z-block", ls=:dot, width=2)
+	p
+end
+
 # ╔═╡ a5293de9-b76a-4a38-80ed-c4794e56959e
 begin
 	wigner(x; β=1, Z_β=8/27) = 1/Z_β * (x+x^2)^β / (1+x+x^2)^(1+1.5β)
@@ -102,21 +127,6 @@ function chainJ(N, α)
 	J
 end
 
-# ╔═╡ 98590bcc-d032-4b0b-bfbf-39131093e7b2
-function levelspacingratio(levels; center_only=false)
-	sizes = size(levels)
-	L = sizes[1]
-	range = center_only ? (div(L,4)+2:3*div(L,4)) : 3:L
-	res = Array{Float64, length(sizes)}(undef, length(range), sizes[2:end]...)
-	for I in CartesianIndices(axes(levels)[2:end])
-		for (i,j) in enumerate(range)
-			ratio = (levels[j-1,I]-levels[j,I])/(levels[j-2,I]-levels[j-1,I])
-			res[i, I] = min(ratio, 1/ratio)
-		end
-	end
-	res
-end
-
 # ╔═╡ c5f003a8-b94a-4321-9c94-476cefa2702c
 function levelspacingratio_mean(levels; center_only=false)
 	sizes = size(levels)
@@ -131,50 +141,6 @@ function levelspacingratio_mean(levels; center_only=false)
 		end
 	end
 	res ./= length(range)
-end
-
-# ╔═╡ e57b2f9f-5453-4913-9ec9-fc0405e3a52e
-rAtZero = let posdata = SimLib.Positions.load("/home/adrian/results/julia-cusp/", :noisy_chain_pbc, 13, 1),
-	shots = SimLib.Positions.shots(posdata),
-	interaction = PowerLaw(6),
-	ρs = SimLib.Positions.ρs(posdata),
-	geom = SimLib.Positions.geometry(posdata),
-	symm = SpinFlip(zbasis(13,5)),
-	res = Matrix{Float64}(undef, shots, length(ρs))
-	for (i, ρ) in enumerate(ρs)
-		for shot in 1:shots
-			g = geometry_from_density(geom, ρ, 13, 1)
-			J = interaction_matrix(interaction, g, SimLib.Positions.data(posdata)[:,:,shot,i])
-			levels = eigvals!(Hermitian(Matrix(symmetrize_op(symm, xxzmodel(J,-0.73)))))
-			res[shot,i] = levelspacingratio_mean(levels; center_only=true)[1]
-			println("ρ: $i Shot: $shot")
-		end
-	end
-	res
-end
-
-# ╔═╡ 2fa6a9c7-c0e7-4ac6-ba68-a6522349fb77
-let N = SimLib.ED.system_size(data),
-	nHilbert = size(data.evals,1),
-	ratios = levelspacingratio(data.evals; center_only=true),
-	ratios_zero_field = levelspacingratio(data_zero_field.evals; center_only=true),
-	r_mean = dropdims(mean(ratios; dims=(1,2)); dims=(1,2)),
-	r_std  = dropdims(std(ratios; dims=(1,2)); dims=(1,2)) / (size(ratios,2))^0.5,
-	r_zero_field = dropdims(mean(ratios_zero_field; dims=(1,2)); dims=(1,2)),
-	r_zero_field_std  = dropdims(std(ratios_zero_field; dims=(1,2)); dims=(1,2)) / (size(ratios,2))^0.5
-	
-	# take <r> per shot and compute stddev on those
-	
-	p = plot(;title="Mean level spacing ratios", legend=:left)
-	for (i, ρ) in enumerate(data.ρs)
-		plot!(data.fields, r_mean[:,i]; label="ρ=$ρ")#, ribbon=r_std[:,i])
-		hline!(r_zero_field[:,i]; label="ρ=$ρ", ls=:dot, ribbon=std(rAtZero[:,i])/10,
-			color=p.series_list[end].plotattributes[:seriescolor])
-	end
-	hline!([0.5295]; label="GOE", ls=:dash, width=2)
-	hline!([2 * log(2)-1]; label="Poisson", ls=:dash, width=2)
-	#plot!(data.fields, rZBlock; label="single z-block", ls=:dot, width=2)
-	p
 end
 
 # ╔═╡ e1ce4ac8-2784-4245-9fdb-4aed964f94d4
@@ -222,10 +188,8 @@ shiftIndex.(collect(0:2^3-1), 3; by=3)
 # ╟─749e5dde-3b8f-4b3d-95b1-427d270412df
 # ╟─4ca67e8c-f712-43a4-ae6a-27d51c6c88ef
 # ╠═2fa6a9c7-c0e7-4ac6-ba68-a6522349fb77
-# ╠═e57b2f9f-5453-4913-9ec9-fc0405e3a52e
 # ╟─a5293de9-b76a-4a38-80ed-c4794e56959e
 # ╟─27a1bca1-bbfc-41ef-a6f1-6b1e97ccad4b
-# ╠═98590bcc-d032-4b0b-bfbf-39131093e7b2
 # ╠═c5f003a8-b94a-4321-9c94-476cefa2702c
 # ╠═e1ce4ac8-2784-4245-9fdb-4aed964f94d4
 # ╠═283aed70-001b-4958-a169-3d31555d793b
