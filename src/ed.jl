@@ -245,14 +245,20 @@ function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, fie
         
         for (k, h) in enumerate(field_values)
             copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
-            evals, evecs = eigen!(Hermitian(matrix))
-            for (l, evec) in enumerate(eachcol(evecs))
-                for (op_index, op) in enumerate(operators)
-                    eev_out[op_index, l, shot, k, i] = real(dot(evec, op, evec)) # dot conjugates the first arg
+            try
+                evals, evecs = eigen!(Hermitian(matrix))
+                for (l, evec) in enumerate(eachcol(evecs))
+                    for (op_index, op) in enumerate(operators)
+                        eev_out[op_index, l, shot, k, i] = real(dot(evec, op, evec)) # dot conjugates the first arg
+                    end
                 end
+                evals_out[:, shot, k, i] = evals
+                eon_out[:, shot, k, i] .= abs2.(mul!(vec, evecs', ψ0)) # this allocates the most right now!
+            catch e;
+                logmsg("Error occured for #field=$k shot=$shot #rho=$i: $e")
+                display(stacktrace(catch_backtrace()))
+                continue
             end
-            evals_out[:, shot, k, i] = evals
-            eon_out[:, shot, k, i] .= abs2.(mul!(vec, evecs', ψ0)) # this allocates the most right now!
         end
         logmsg(@sprintf("Done %03i - #rho =%2i - %03i/%03i on #%02i", index, i, shot, nshots, indexpids(interactions)))
     end
