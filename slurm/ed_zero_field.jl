@@ -3,7 +3,7 @@
 #SBATCH --nodes=1 
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=12:00:00 
-#SBATCH --mem=90gb 
+#SBATCH --mem=300gb 
 #SBATCH --cpus-per-task=48
 #SBATCH --job-name=zero-field
 #SBATCH --output="logs/zero-field-%j.out"

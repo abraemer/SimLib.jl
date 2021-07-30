@@ -3,7 +3,7 @@
 #SBATCH --nodes=1 
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=12:00:00 
-#SBATCH --mem=90gb 
+#SBATCH --mem=300gb 
 #SBATCH --cpus-per-task=48
 #SBATCH --job-name=zero-field
 #SBATCH --output="logs/zero-field-%j.out"
@@ -115,7 +115,7 @@ logmsg("Starting!")
     logmsg("Running ED")
     eddata = ED.run_ed_parallel2(posdata, ALPHA, [0]; symmetry=ZBlockBasis(N, BLOCK)) # choose biggest block
     logmsg("Saving")
-    ED.save(PREFIX, eddata; suffix="-k_$BLOCK")
+    ED.save(PREFIX, eddata; suffix="-k_$BLOCK_low_density")
     logmsg("Done!")
 end
 ## REMEMBER TO SET RESOURCE HEADER FOR SLURM!
