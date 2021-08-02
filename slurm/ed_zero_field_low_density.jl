@@ -115,7 +115,7 @@ logmsg("Starting!")
     logmsg("Running ED")
     eddata = ED.run_ed_parallel2(posdata, ALPHA, [0]; symmetry=ZBlockBasis(N, BLOCK)) # choose biggest block
     logmsg("Saving")
-    ED.save(PREFIX, eddata; suffix="-k_$BLOCK_low_density")
+    ED.save(PREFIX, eddata; suffix="-k_$(BLOCK)_low_density")
     logmsg("Done!")
 end
 ## REMEMBER TO SET RESOURCE HEADER FOR SLURM!
