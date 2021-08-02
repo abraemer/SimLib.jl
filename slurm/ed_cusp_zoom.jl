@@ -65,7 +65,7 @@ const GEOMETRY = Symbol(lowercase(ARGS[1]))
 const N = parse(Int, ARGS[2])
 const DIM = parse(Int, ARGS[3])
 const ALPHA = parse(Float64, ARGS[4])
-const FIELD = collect(-0.5:0.02:-0.02)
+const FIELDS = collect(-0.5:0.02:-0.02)
 const ρs = [1.0]
 const SHOTS = 100
 
@@ -73,7 +73,7 @@ const SHOTS = 100
 @show N
 @show DIM
 @show ALPHA
-@show FIELD
+@show FIELDS
 @show ρs
 @show SHOTS
 
