@@ -12,7 +12,7 @@
 # load modules
 # not needed - julia installed locally
 
-exec julia --color=no --procs 50 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
+exec julia --color=no --procs 48 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
 =#
 println("zero_field.slurm")
 
