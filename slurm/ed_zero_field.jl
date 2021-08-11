@@ -113,7 +113,7 @@ logmsg("Starting!")
     logmsg("Preparing position data")
     posdata = preparePosdata(GEOMETRY, N, DIM, ρs)
     logmsg("Running ED")
-    eddata = ED.run_ed_parallel2(posdata, ALPHA, [0]; symmetry=ZBlockBasis(N, BLOCK)) # choose biggest block
+    eddata = ED.run_ed_parallel2(posdata, ALPHA, [0]; symmetry=ZBlockBasis(N, BLOCK)) # choose biggest block # applying spinflip does not change anything
     logmsg("Saving")
     ED.save(PREFIX, eddata; suffix="-k_$BLOCK")
     logmsg("Done!")

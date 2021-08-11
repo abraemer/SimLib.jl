@@ -264,7 +264,7 @@ function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, fie
     end
 end
 
-function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemble, processes=workers(), symmetry=FullZBasis(Positions.system_size(posdata)))
+function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemble, processes=workers(), symmetry=SpinFlip(FullZBasis(Positions.system_size(posdata))))
     N = Positions.system_size(posdata)
     dim = Positions.dimension(posdata)
     ρs = Positions.ρs(posdata)
