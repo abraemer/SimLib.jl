@@ -13,4 +13,4 @@
 # not needed - julia installed locally
 
 # ed_cusp_zoom.jl geom N dim alpha
-exec julia --color=no --procs 48 --startup-file=no "ed_cusp_zoom.jl" "$1 13 1 $2" 
+exec julia --color=no --procs 48 --startup-file=no "slurm/cusp-zoom/ed_cusp_zoom.jl" "$1 13 1 $2" 
