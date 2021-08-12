@@ -2,8 +2,8 @@
 # ########## Begin Slurm header ########## 
 #SBATCH --nodes=1 
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=0:45:00 
-#SBATCH --mem=50gb 
+#SBATCH --time=0:40:00 
+#SBATCH --mem=56gb 
 #SBATCH --cpus-per-task=48
 #SBATCH --job-name=cusp-zoom2-N_13
 #SBATCH --output="logs/cusp-zoom2-N_13-%j.out"
