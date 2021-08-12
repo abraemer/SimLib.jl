@@ -12,18 +12,6 @@ function path_prefix()
 end
 
 
-#TODO use Base.@kwdef ?
-mutable struct SaveLocation
-    prefix::String
-    suffix::String
-    SaveLocation(prefix, suffix) = new(string(prefix), string(suffix))
-end
-
-SaveLocation(;prefix=path_prefix(), suffix="") = SaveLocation(prefix, suffix)
-SaveLocation(prefix::AbstractString) = SaveLocation(prefix, "")
-SaveLocation(sl::SaveLocation) = sl
-
-
 const GEOMETRIES = [:box, :box_pbc, :noisy_chain, :noisy_chain_pbc]
 
 # The OBC Volume coeffs should probably be a bit bigger to accommodate for the extra space outside
