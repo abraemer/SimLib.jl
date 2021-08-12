@@ -8,7 +8,7 @@ using XXZNumerics
 
 
 export logmsg, path_prefix, parse_geometry, geometry_from_density
-export SaveLocation, datapath, save, load, load_or_create
+export SaveLocation, datapath, create, save, load, load_or_create
 
 include("general.jl")
 include("data.jl")

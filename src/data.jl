@@ -13,11 +13,22 @@ SaveLocation(sl::SaveLocation) = sl
     abstract AbstractDataDescriptor
 
 Supertype for all `DataDescriptor`s.
-A `DataDescriptor` holds information about a set parameters that can be used to obtain the corresponding `Data`. Either by loading it from disk
+A `DataDescriptor` holds information about a set parameters that can be used to obtain the corresponding `Data`. Either by `load`ing or by `create`ing it.
 """
 abstract type AbstractDataDescriptor end
 
+"""
+    _filename(descriptor)
+Generate the middle part of the save location. A prefix will by prepended by `joinpath` and a suffix with filetype will be appended.
+"""
 function _filename end
+
+"""
+    _convert_legacy_data(Val(:oldname), legacydata)
+If data from before the Great Refactoring is loaded, this function will be used to convert it to a new and shiny `Data` object.
+The dispatch is on the key for the object used by `JLD2`, converted to a `Symbol`.
+"""
+function _convert_legacy_data end
 
 """
     abstract AbstractData
@@ -69,6 +80,13 @@ function datapath(desc::AbstractDataDescriptor, prefix::AbstractString, suffix::
 end
 
 """
+    create(descriptor)
+
+Perform the calculation described by the `DataDescriptor`.
+"""
+function create end
+
+"""
     save(data)
     save(data, path)
     save(data[, savelocation]]; prefix, suffix)
@@ -88,7 +106,6 @@ function save(data::AbstractData, path::AbstractString)
     JLD2.jldsave(path; data)
 end
 
-function _convert_legacy_data end
 
 """
     load(descriptor)
@@ -99,6 +116,7 @@ Load the data described by the `DataDescriptor`.
 See [`datapath`](@ref) for documention on the different variants to specifiy a path.
 """
 load(desc::AbstractDataDescriptor, args...; kwargs...) = load(datapath(desc, args...; kwargs...))
+
 function load(path::AbstractString; throwerror=true)
     if !isfile(path)
         if !throwerror
@@ -117,12 +135,6 @@ function load(path::AbstractString; throwerror=true)
     end
 end
 
-"""
-    create(descriptor)
-
-Perform the calculation described by the `DataDescriptor`.
-"""
-function create end
 
 """
     load_or_create(descriptor; dosave)
