@@ -18,7 +18,7 @@ include("ensembles.jl")
 include("lsr.jl")
 
 using .Positions
-export Positions, PositionDataDescriptor, PositionData, position_datapath, save, load, create_positions!, load_or_create
+export Positions, PositionDataDescriptor, PositionData
 
 using .ED
 export ED, EDData, EDDataDescriptor, run_ed

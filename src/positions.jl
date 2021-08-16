@@ -5,7 +5,7 @@ using Printf: @sprintf
 using ..SimLib
 using XXZNumerics
 
-export PositionDataDescriptor, PositionData, position_datapath, save, load, create_positions!, load_or_create
+export PositionDataDescriptor, PositionData
 
 ## Data structure
 
