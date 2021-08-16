@@ -86,8 +86,8 @@ The indices mean:
 
 The default save directory is "data".
 """
-struct EDData <: SimLib.AbstractData
-    descriptor::EDDataDescriptor
+struct EDData{N,B} <: SimLib.AbstractData
+    descriptor::EDDataDescriptor{N,B}
     eev::_FARRAY{5} # eigenstate expectation value of x magnetization ⟨i|Sⁱₓ|i⟩
     eon::_FARRAY{4} # eigenstate occupation number |⟨i|ψ⟩|²
     evals::_FARRAY{4} # energy eigenvalues Eᵢ
@@ -133,6 +133,9 @@ function SimLib._convert_legacy_data(::Val{:eddata}, legacydata)
     geom = legacydata.geometry
     dim = legacydata.dim
     α = legacydata.α
+
+    logmsg("Guessing parameters while loading legacy data:")
+    logmsg("scale_fields = :ensemble")
 
     savelocation = SaveLocation(prefix="", suffix="")
     desc = EDDataDescriptor(geom, dim, N, α, shots, ρs, fields, :ensemble, basis, savelocation)
