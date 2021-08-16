@@ -165,8 +165,13 @@ function load_or_create(desc::AbstractDataDescriptor, pathargs...; dosave=true, 
     else
         logmsg("Found existing data for $(desc).")
         data = load(p)
-        compat = descriptor(data) == desc
-        (compat || ismissing(compat)) && return data
+        try
+            compat = descriptor(data) == desc
+            (compat || ismissing(compat)) && return data
+        catch e;
+            logmsg("Some error occured during loading: $(string(e))")
+            display(stacktrace(catch_backtrace()))
+        end
         # only if compat == false continue
         logmsg("Loaded data does not fit requirements.")
     end
