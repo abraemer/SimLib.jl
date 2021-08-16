@@ -58,6 +58,7 @@ Base.setindex!(sdata::AbstractSimpleData, args...) = setindex!(data(sdata), args
 """
     datapath(dataOrDesc)
     datapath(dataOrDesc, path)
+    datapath(dataOrDesc, prefix, suffix)
     datapath(dataOrDesc[, savelocation]; prefix, suffix)
 
 Construct the path to where the data for this object should be saved to/loaded from.
@@ -67,11 +68,11 @@ There are a few different ways the path can be constructed.
 """
 datapath(data::AbstractData, args...; kwargs...) = datapath(descriptor(data), args...; kwargs...) # unwrap Data -> DataDescriptor
 # directly specified path takes precedence
-datapath(desc::AbstractDataDescriptor, path::AbstractString; kwargs...) = path
+datapath(::AbstractDataDescriptor, path::AbstractString) = path
 # else merge SaveLocation and keyword args (latter have precedence)
 datapath(desc::AbstractDataDescriptor, pathdata::SaveLocation=desc.pathdata; prefix=pathdata.prefix, suffix=pathdata.suffix) = datapath(desc, prefix, suffix)
 # construct path
-function datapath(desc::AbstractDataDescriptor, prefix::AbstractString, suffix::AbstractString="") 
+function datapath(desc::AbstractDataDescriptor, prefix::AbstractString, suffix::AbstractString) 
     if length(suffix) > 0
         joinpath(prefix, "$(_filename(desc))-$(suffix).jld2")
     else
@@ -152,7 +153,7 @@ function load_or_create(desc::AbstractDataDescriptor, pathargs...; dosave=true, 
     else
         logmsg("Found existing position data!")
         data = load(p)
-        data.desc == desc && return data
+        descriptor(data) == desc && return data
         logmsg("Loaded data does not fit requirements: generating anew.")
     end
     data = create(desc)

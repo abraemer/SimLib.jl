@@ -18,7 +18,7 @@ The important bits of information needed to specify a set positions are:
  - system_size
  - shots
  - densities ρs
-For loading data the last 2 may be omitted.
+For loading data the last 2 may be omitted for `load`ing.
 """
 struct PositionDataDescriptor <: SimLib.AbstractDataDescriptor
     geometry::Symbol
@@ -29,7 +29,7 @@ struct PositionDataDescriptor <: SimLib.AbstractDataDescriptor
     pathdata::SaveLocation
     function PositionDataDescriptor(geom, dimension, system_size, shots, ρs, pathdata::SaveLocation)
         geom ∈ SimLib.GEOMETRIES || error("Unknown geometry: $geom")
-        new(geom, dimension, system_size, shots, sort(vec(ρs)), pathdata)
+        new(geom, dimension, system_size, shots, unique!(sort(vec(ρs))), pathdata)
     end
 end
 
@@ -41,8 +41,8 @@ function Base.:(==)(d1::PositionDataDescriptor, d2::PositionDataDescriptor)
     all(getfield(d1, f) == getfield(d2, f) for f in [:geometry, :dimension, :system_size, :shots, :ρs])
 end
 
-SimLib._filename(desc::PositionDataDescriptor) = SimLib._filename(desc.geometry, desc.dimension, desc.system_size)
-SimLib._filename(geometry, dimension, system_size) = @sprintf("positions/%s_%id_N_%02i", geometry, dimension, system_size)
+SimLib._filename(desc::PositionDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size)
+filename(geometry, dimension, system_size) = @sprintf("positions/%s_%id_N_%02i", geometry, dimension, system_size)
 
 """
     struct PositionData
