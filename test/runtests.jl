@@ -1,4 +1,5 @@
 using SimLib
+using XXZNumerics
 using Test
 using Distributed
 using Random

@@ -1,11 +1,11 @@
 #TODO use Base.@kwdef ?
 mutable struct SaveLocation
     prefix::String
-    suffix::String
-    SaveLocation(prefix, suffix) = new(string(prefix), string(suffix))
+    suffix::Maybe{String}
+    SaveLocation(prefix, suffix) = new(prefix, suffix)
 end
 
-SaveLocation(;prefix=path_prefix(), suffix="") = SaveLocation(prefix, suffix)
+SaveLocation(;prefix=path_prefix(), suffix=missing) = SaveLocation(prefix, suffix)
 SaveLocation(prefix::AbstractString) = SaveLocation(prefix, "")
 SaveLocation(sl::SaveLocation) = sl
 
@@ -72,8 +72,8 @@ datapath(::AbstractDataDescriptor, path::AbstractString) = path
 # else merge SaveLocation and keyword args (latter have precedence)
 datapath(desc::AbstractDataDescriptor, pathdata::SaveLocation=desc.pathdata; prefix=pathdata.prefix, suffix=pathdata.suffix) = datapath(desc, prefix, suffix)
 # construct path
-function datapath(desc::AbstractDataDescriptor, prefix::AbstractString, suffix::AbstractString) 
-    if length(suffix) > 0
+function datapath(desc::AbstractDataDescriptor, prefix::AbstractString, suffix::Maybe{<:AbstractString})
+    if !ismissing(suffix) && length(suffix) > 0
         joinpath(prefix, "$(_filename(desc))-$(suffix).jld2")
     else
         joinpath(prefix, "$(_filename(desc)).jld2")
@@ -165,7 +165,9 @@ function load_or_create(desc::AbstractDataDescriptor, pathargs...; dosave=true, 
     else
         logmsg("Found existing data for $(desc).")
         data = load(p)
-        descriptor(data) == desc && return data
+        compat = descriptor(data) == desc
+        (compat || ismissing(compat)) && return data
+        # only if compat == false continue
         logmsg("Loaded data does not fit requirements.")
     end
     data = create(desc)

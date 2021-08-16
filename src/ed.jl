@@ -2,6 +2,7 @@ module ED
 
 using ..Positions
 using ..SimLib
+using ..SimLib: Maybe, FArray
 
 using Distributed
 import JLD2
@@ -10,10 +11,7 @@ using Printf: @sprintf
 using SharedArrays
 using XXZNumerics
 
-export EDData, EDDataDescriptor, run_ed
-
-# simplify type definitions
-const _FARRAY{N} = Array{Float64, N} where N
+export EDDataDescriptor, EDData, run_ed
 
 ## Data structure
 
@@ -30,33 +28,33 @@ The important bits of information needed to specify for performing exact diagona
  - field strengths
  - scaling of field strengths
  - symmetries to respect
-For loading data the last 4 may be omitted for `load`ing. 
+For `load`ing data only the first 4 fields are required
 Can also be constructed from a `PositionDataDescriptor` by supplying a the missing bits (α, fields).
 """
-struct EDDataDescriptor{N, B <: XXZNumerics.Symmetry.AbstractBasis{N}} <: SimLib.AbstractDataDescriptor
+struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
     geometry::Symbol
     dimension::Int
     system_size::Int
     α::Float64
-    shots::Int
-    ρs::_FARRAY{1}
-    fields::_FARRAY{1}
-    scale_fields::Symbol
-    basis::B
+    shots::Maybe{Int}
+    ρs::Maybe{FArray{1}}
+    fields::Maybe{FArray{1}}
+    scale_fields::Maybe{Symbol}
+    basis::Maybe{<: XXZNumerics.Symmetry.AbstractBasis}
     pathdata::SaveLocation
     function EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, pathdata::SaveLocation)
         geometry ∈ SimLib.GEOMETRIES || error("Unknown geometry: $geom")
         scale_fields ∈ [:none, :ensemble, :shot]
-        new{system_size, typeof(basis)}(geometry, dimension, system_size, α, shots, unique!(sort(vec(ρs))), unique!(sort(vec(fields))), scale_fields, basis, pathdata::SaveLocation)
+        new(geometry, dimension, system_size, α, shots, ismissing(ρs) ? missing : unique!(sort(vec(ρs))), ismissing(fields) ? missing : unique!(sort(vec(fields))), scale_fields, basis, pathdata::SaveLocation)
     end
 end
 
-EDDataDescriptor(posdata::PositionDataDescriptor, α, fields, scale_fields=:ensemble, basis=SpinFlip(zbasis(posdata.system_size)); prefix=posdata.pathdata.prefix, suffix=posdata.pathdata.suffix) =
+EDDataDescriptor(posdata::PositionDataDescriptor, α, fields, scale_fields=missing, basis=SpinFlip(zbasis(posdata.system_size)); prefix=posdata.pathdata.prefix, suffix=posdata.pathdata.suffix) =
     EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, α, posdata.shots, posdata.ρs, fields, scale_fields, basis, SaveLocation(prefix, suffix))
 
 EDDataDescriptor(posdata::PositionData, args...; kwargs...) = EDDataDescriptor(descriptor(posdata), args...; kwargs...)
 
-function EDDataDescriptor(geometry, dimension, system_size, α, shots=0, ρs=Float64[], fields=Float64[], scale_fields=:ensemble, basis=SpinFlip(zbasis(system_size)); prefix=path_prefix(), suffix="")
+function EDDataDescriptor(geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=:ensemble, basis=SpinFlip(zbasis(system_size)); prefix=path_prefix(), suffix="")
     EDDataDescriptor(geometry, dimension, system_size, α, shots, unique!(sort(vec(ρs))), unique!(sort(vec(fields))), scale_fields, basis, SaveLocation(prefix, suffix))
 end
 
@@ -86,11 +84,11 @@ The indices mean:
 
 The default save directory is "data".
 """
-struct EDData{N,B} <: SimLib.AbstractData
-    descriptor::EDDataDescriptor{N,B}
-    eev::_FARRAY{5} # eigenstate expectation value of x magnetization ⟨i|Sⁱₓ|i⟩
-    eon::_FARRAY{4} # eigenstate occupation number |⟨i|ψ⟩|²
-    evals::_FARRAY{4} # energy eigenvalues Eᵢ
+struct EDData <: SimLib.AbstractData
+    descriptor::EDDataDescriptor
+    eev::FArray{5} # eigenstate expectation value of x magnetization ⟨i|Sⁱₓ|i⟩
+    eon::FArray{4} # eigenstate occupation number |⟨i|ψ⟩|²
+    evals::FArray{4} # energy eigenvalues Eᵢ
 end
 
 EDData(args...; kwargs...) = EDData(EDDataDescriptor(args...; kwargs...))
@@ -104,9 +102,9 @@ function EDData(desc::EDDataDescriptor)
     
     EDData(
         desc,
-        _FARRAY{5}(undef, N, hilbert_space_dim, shots, hs, ρcount),
-        _FARRAY{4}(undef, hilbert_space_dim, shots, hs, ρcount),
-        _FARRAY{4}(undef, hilbert_space_dim, shots, hs, ρcount),
+        FArray{5}(undef, N, hilbert_space_dim, shots, hs, ρcount),
+        FArray{4}(undef, hilbert_space_dim, shots, hs, ρcount),
+        FArray{4}(undef, hilbert_space_dim, shots, hs, ρcount),
     )
 end
 
@@ -218,15 +216,15 @@ function _compute_threaded(edd, posdata)
     nshots = edd.shots
     nfields = length(edd.fields)
     nρs = length(edd.ρs)
-    eev   = _FARRAY{5}(undef, (N, hilbert_space_dim, nshots, nfields, nρs))
-    evals = _FARRAY{4}(undef,    (hilbert_space_dim, nshots, nfields, nρs))
-    eon   = _FARRAY{4}(undef,    (hilbert_space_dim, nshots, nfields, nρs))
+    eev   = FArray{5}(undef, (N, hilbert_space_dim, nshots, nfields, nρs))
+    evals = FArray{4}(undef,    (hilbert_space_dim, nshots, nfields, nρs))
+    eon   = FArray{4}(undef,    (hilbert_space_dim, nshots, nfields, nρs))
 
     spin_ops = real.(symmetrize_op.(Ref(edd.basis), op_list(σx/2, N)))
     field_operator = sum(spin_ops)
     ψ0 = vec(symmetrize_state(edd.basis, foldl(⊗, ((up+down)/√2 for _ in 1:N))))
 
-    interactions = _FARRAY{4}(undef, (N,N,nshots,nρs))
+    interactions = FArray{4}(undef, (N,N,nshots,nρs))
     _compute_interactions!(interactions, edd, posdata)
 
     # use one thread less as the main thread should not be used for work (I think)

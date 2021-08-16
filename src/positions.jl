@@ -3,6 +3,7 @@ module Positions
 import JLD2
 using Printf: @sprintf
 using ..SimLib
+using ..SimLib: Maybe, FArray
 using XXZNumerics
 
 export PositionDataDescriptor, PositionData
@@ -18,22 +19,22 @@ The important bits of information needed to specify a set positions are:
  - system_size
  - shots
  - densities ρs
-For loading data the last 2 may be omitted for `load`ing.
+For `load`ing data the last 2 may be omitted.
 """
 struct PositionDataDescriptor <: SimLib.AbstractDataDescriptor
     geometry::Symbol
     dimension::Int
     system_size::Int
-    shots::Int
-    ρs::Vector{Float64}
+    shots::Maybe{Int}
+    ρs::Maybe{FArray{1}}
     pathdata::SaveLocation
     function PositionDataDescriptor(geom, dimension, system_size, shots, ρs, pathdata::SaveLocation)
         geom ∈ SimLib.GEOMETRIES || error("Unknown geometry: $geom")
-        new(geom, dimension, system_size, shots, unique!(sort(vec(ρs))), pathdata)
+        new(geom, dimension, system_size, shots, ismissing(ρs) ? missing : unique!(sort(vec(ρs))), pathdata)
     end
 end
 
-function PositionDataDescriptor(geom, dimension, system_size, shots=0, ρs=Float64[]; prefix=path_prefix(), suffix="")
+function PositionDataDescriptor(geom, dimension, system_size, shots=missing, ρs=missing; prefix=path_prefix(), suffix="")
     PositionDataDescriptor(geom, dimension, system_size, shots, ρs, SaveLocation(prefix, suffix))
 end
 

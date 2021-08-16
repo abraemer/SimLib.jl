@@ -1,9 +1,8 @@
 @testset "ed.jl" begin
-    @show Base.load_path()
     location = SaveLocation(;prefix=PREFIX)
 
     pdd = PositionDataDescriptor(:box, 1, 7, 20, [0.1, 0.2], location)
-    edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2])
+    edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, SpinFlip(zbasis(6)))
 
     @test edd.pathdata.prefix == location.prefix
 
