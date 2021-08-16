@@ -116,7 +116,13 @@ end
 Load the data described by the `DataDescriptor`.
 See [`datapath`](@ref) for documention on the different variants to specifiy a path.
 """
-load(desc::AbstractDataDescriptor, args...; kwargs...) = load(datapath(desc, args...; kwargs...))
+function load(desc::AbstractDataDescriptor, args...; kwargs...)
+    data = load(datapath(desc, args...; kwargs...))
+    # copy savelocation data over in case it's a legacy file
+    data.pathdata.prefix = desc.pathdata.prefix
+    data.pathdata.suffix = desc.pathdata.suffix
+    data
+end
 
 function load(path::AbstractString; throwerror=true)
     if !isfile(path)
@@ -133,6 +139,10 @@ function load(path::AbstractString; throwerror=true)
         # legacy file # try converting
         logmsg("Found legacy data. Some parameters might not be accurately loaded!")
         name, entry = first(data)
+        # TODO could do something smart to figure out suffix/prefix maybe
+        # however I don't think I will load and just save a file back...
+        # Maybe if I use load_or_create and it loads, and then I try to save that...
+        # This case is now accounted for but only when loading via a descriptor, which should be the generic case
         _convert_legacy_data(Val(Symbol(name)), entry)
     end
 end
