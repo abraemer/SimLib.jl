@@ -115,27 +115,32 @@ end
 SimLib._filename(desc::EDDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
 filename(geometry, dimension, system_size, α) = @sprintf("data/ed_%s_%id_alpha_%.1f_N_%02i", geometry, dimension, α, system_size)
 
+function _guess_basis(N, hilbert_space_dimension)
+    if hilbert_space_dimension == 2^N
+        zbasis(N)
+    elseif hilbert_space_dimension == 2^(N-1)
+        SpinFlip(zbasis(N))
+    else
+        b = zbasis(N, div(N-1,2))
+        (basis_size(b) == hilbert_space_dimension) || logmsg("[WARN]Could not guess a matching basis for N=$N dim=$hilbert_space_dimension")
+        b
+    end
+end
+
 function SimLib._convert_legacy_data(::Val{:eddata}, legacydata)
     eev = legacydata.eev
     eon = legacydata.eon
     evals = legacydata.evals
     N, hilbert_space_dimension, shots, _, _ = size(eev)
-    basis = 
-        if hilbert_space_dimension == 2^N
-            zbasis(N)
-        elseif hilbert_space_dimension == 2^(N-1)
-            SpinFlip(zbasis(N))
-        else
-            zbasis(N, div(N-1,2))
-        end
+    basis = _guess_basis(N, hilbert_space_dimension)
     ρs = legacydata.ρs
     fields = legacydata.fields
     geom = legacydata.geometry
     dim = legacydata.dim
     α = legacydata.α
 
-    logmsg("Guessing parameters while loading legacy data:")
-    logmsg("scale_fields = :ensemble")
+    logmsg("[WARN]Guessing parameters while loading legacy data:")
+    logmsg("[WARN]  scale_fields = :ensemble")
 
     savelocation = SaveLocation(prefix="", suffix="")
     desc = EDDataDescriptor(geom, dim, N, α, shots, ρs, fields, :ensemble, basis, savelocation)
