@@ -1,11 +1,8 @@
 @testset "positions.jl" begin
-    using SimLib
-
-    PREFIX = tempname()
     location = SaveLocation(;prefix=PREFIX)
     pdd = PositionDataDescriptor(:box_pbc, 1, 8, 100, [0.1,0.2], location)
     file = datapath(pdd)
-    @test file == datapath(PositionDataDescriptor(:box_pbc, 1, 8, 100, [0.1,0.2]), PREFIX)
+    @test file == datapath(PositionDataDescriptor(:box_pbc, 1, 8, 100, [0.1,0.2]); prefix=PREFIX)
     @test file == datapath(PositionDataDescriptor(:box_pbc, 1, 8, 100, [0.1,0.2]), location)
     @test file == datapath(PositionDataDescriptor(:box_pbc, 1, 8), location)
     # clean if exists for some reason

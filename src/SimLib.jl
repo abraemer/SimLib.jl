@@ -21,7 +21,7 @@ using .Positions
 export Positions, PositionDataDescriptor, PositionData, position_datapath, save, load, create_positions!, load_or_create
 
 using .ED
-export ED, EDData, EDDataDescriptor, run_ed_parallel2
+export ED, EDData, EDDataDescriptor, run_ed
 
 using .LSR
 export LSR, levelspacingratio, LSRData, LSRDataDescriptor

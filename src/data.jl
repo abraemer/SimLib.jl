@@ -131,6 +131,7 @@ function load(path::AbstractString; throwerror=true)
         data["data"]
     else
         # legacy file # try converting
+        logmsg("Found legacy data. Some parameters might not be accurately loaded!")
         name, entry = first(data)
         _convert_legacy_data(Val(Symbol(name)), entry)
     end
@@ -147,14 +148,15 @@ then `create` the data.
 If `save` is true, also `save` the data (possibly overwriting what was there). Default: true
 """
 function load_or_create(desc::AbstractDataDescriptor, pathargs...; dosave=true, kwargs...)
+    logmsg("load_or_create with spec $(desc)")
     p = datapath(desc, pathargs...; kwargs...)
     if !isfile(p)
-        logmsg("No data found at $(p)!")
+        logmsg("No data found at $(p).")
     else
-        logmsg("Found existing position data!")
+        logmsg("Found existing data for $(desc).")
         data = load(p)
         descriptor(data) == desc && return data
-        logmsg("Loaded data does not fit requirements: generating anew.")
+        logmsg("Loaded data does not fit requirements.")
     end
     data = create(desc)
     dosave && save(data, p)

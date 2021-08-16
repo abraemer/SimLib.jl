@@ -81,6 +81,7 @@ end
 
 ## main function
 function create_positions!(empty_posdata; fail_rate=0.3)
+    logmsg("Generating positions for $(empty_posdata.descriptor)")
     dim = empty_posdata.dimension
     N = empty_posdata.system_size
     shots = empty_posdata.shots

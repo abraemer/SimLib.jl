@@ -301,7 +301,9 @@ function run_ed(desc::EDDataDescriptor, posdata::PositionData)
 end
 
 function SimLib.create(desc::EDDataDescriptor)
+    logmsg("Creating ED data for $(desc)")
     pdd = PositionDataDescriptor(desc.geometry, desc.dimension, desc.system_size, desc.shots, desc.ρs, desc.pathdata)
+    logmsg("Needed Position data $(pdd)")
     posdata = load_or_create(pdd)
     run_ed(desc, posdata)
 end
