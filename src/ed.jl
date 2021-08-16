@@ -49,13 +49,13 @@ struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
     end
 end
 
-EDDataDescriptor(posdata::PositionDataDescriptor, α, fields, scale_fields=missing, basis=SpinFlip(zbasis(posdata.system_size)); prefix=posdata.pathdata.prefix, suffix=posdata.pathdata.suffix) =
+EDDataDescriptor(posdata::PositionDataDescriptor, α, fields=missing, scale_fields=missing, basis=SpinFlip(zbasis(posdata.system_size)); prefix=posdata.pathdata.prefix, suffix=posdata.pathdata.suffix) =
     EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, α, posdata.shots, posdata.ρs, fields, scale_fields, basis, SaveLocation(prefix, suffix))
 
 EDDataDescriptor(posdata::PositionData, args...; kwargs...) = EDDataDescriptor(descriptor(posdata), args...; kwargs...)
 
-function EDDataDescriptor(geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=:ensemble, basis=SpinFlip(zbasis(system_size)); prefix=path_prefix(), suffix="")
-    EDDataDescriptor(geometry, dimension, system_size, α, shots, unique!(sort(vec(ρs))), unique!(sort(vec(fields))), scale_fields, basis, SaveLocation(prefix, suffix))
+function EDDataDescriptor(geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=missing, basis=SpinFlip(zbasis(system_size)), savelocation=SaveLocation(); prefix=savelocation.prefix, suffix=savelocation.suffix)
+    EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, SaveLocation(; prefix, suffix))
 end
 
 function Base.:(==)(d1::EDDataDescriptor, d2::EDDataDescriptor)
