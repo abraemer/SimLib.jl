@@ -7,8 +7,8 @@ using Statistics
 using XXZNumerics
 
 
-export logmsg, path_prefix, parse_geometry, geometry_from_density
-export SaveLocation, datapath, create, save, load, load_or_create
+export logmsg, path_prefix, parse_geometry, geometry_from_density, meandrop, stddrop
+export SaveLocation, descriptor, datapath, create, save, load, load_or_create
 
 # simplify type definitions
 const FArray{N} = Array{Float64, N} where N

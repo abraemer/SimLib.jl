@@ -1,4 +1,7 @@
 @testset "ed.jl" begin
+
+    print("\n\n ####### ed.jl #######\n\n")
+
     location = SaveLocation(;prefix=PREFIX)
 
     pdd = PositionDataDescriptor(:box, 1, 7, 20, [0.1, 0.2], location)
@@ -29,4 +32,6 @@
     @test edata1.eev ≈ edata2.eev
     @test edata1.evals ≈ edata2.evals
     @test edata1.eon ≈ edata2.eon
+
+    save(edata1) # for next test
 end

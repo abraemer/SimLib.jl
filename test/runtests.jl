@@ -23,5 +23,6 @@ Random.seed!(5)
 @testset "SimLib.jl" begin
     # Write your tests here.
     include("positions.jl")
-    include("ed.jl")
+    include("ed.jl") # depends on generating positions
+    include("ensembles.jl") # should be after ed.jl to reuse data
 end

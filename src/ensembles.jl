@@ -34,6 +34,7 @@ struct EnsembleDataDescriptor <: SimLib.AbstractDataDescriptor
 end
 
 EnsembleDataDescriptor(args...; kwargs...) = EnsembleDataDescriptor(ED.EDDataDescriptor(args...; kwargs...))
+EnsembleDataDescriptor(edata::ED.EDData) = EnsembleDataDescriptor(descriptor(edata))
 
 # simply forward all properties
 Base.getproperty(ensdd::EnsembleDataDescriptor, p::Symbol) = p == :derivedfrom ? getfield(ensdd, :derivedfrom) : getproperty(getfield(ensdd, :derivedfrom), p)
@@ -64,7 +65,7 @@ struct EnsembleData <: SimLib.AbstractSimpleData
     data::Array{Float64,4}
 end
 
-EnsembleData(desc::EnsembleDataDescriptor) = EnsembleData(Array{Float64,4}(undef, desc.shots, length(desc.fields), length(desc.ρs), 3))
+EnsembleData(desc::EnsembleDataDescriptor) = EnsembleData(desc, Array{Float64,4}(undef, desc.shots, length(desc.fields), length(desc.ρs), 3))
 
 function Base.getproperty(ensdata::EnsembleData, s::Symbol)
     if hasfield(typeof(ensdata), s)
@@ -137,9 +138,9 @@ function _diagonal!(out, eon, eev, ignored=nothing)
 end
 
 function ensemble_predictions!(ensemble_data, eddata)
-    eev = dropdims(mean(ED.eev(eddata); dims=1); dims=1) # predict global magnetization
-    eon = ED.eon(eddata) # [eigen_state, shot, h, rho]
-    evals = ED.evals(eddata) # [eigen_state, shot, h, rho]
+    eev = meandrop(eddata.eev; dims=1) # predict global magnetization
+    eon = eddata.eon # [eigen_state, shot, h, rho]
+    evals = eddata.evals # [eigen_state, shot, h, rho]
 
     _microcan!( @view(ensemble_data.data[:,:,:,1]), eon, eev, evals)
     _canonical!(@view(ensemble_data.data[:,:,:,2]), eon, eev, evals)
@@ -147,7 +148,7 @@ function ensemble_predictions!(ensemble_data, eddata)
     ensemble_data
 end
 
-ensemble_predictions(eddata::ED.EDData) = ensemble_predictions!(EnsembleData(eddata), eddata)
+ensemble_predictions(eddata::ED.EDData) = ensemble_predictions!(EnsembleData(EnsembleDataDescriptor(eddata)), eddata)
 function SimLib.create(desc::EnsembleDataDescriptor)
     logmsg("Computing ensemble predictions for $(desc.derivedfrom)")
     eddata = load_or_create(desc.derivedfrom)

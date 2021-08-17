@@ -1,4 +1,7 @@
 @testset "positions.jl" begin
+
+    print("\n\n ####### positions.jl #######\n\n")
+
     location = SaveLocation(;prefix=PREFIX)
     pdd = PositionDataDescriptor(:box_pbc, 1, 8, 100, [0.1,0.2], location)
     file = datapath(pdd)
