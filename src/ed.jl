@@ -40,7 +40,7 @@ struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
     ρs::Maybe{FArray{1}}
     fields::Maybe{FArray{1}}
     scale_fields::Maybe{Symbol}
-    basis::Maybe{<: XXZNumerics.Symmetry.AbstractBasis}
+    basis::Maybe{<:XXZNumerics.Symmetry.AbstractBasis}
     pathdata::SaveLocation
     function EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, pathdata::SaveLocation)
         geometry ∈ SimLib.GEOMETRIES || error("Unknown geometry: $geom")
@@ -120,12 +120,19 @@ function _guess_basis(N, hilbert_space_dimension)
         SpinFlip(zbasis(N))
     else
         b = zbasis(N, div(N-1,2))
-        (basis_size(b) == hilbert_space_dimension) || logmsg("[WARN]Could not guess a matching basis for N=$N dim=$hilbert_space_dimension")
-        b
+        if basis_size(b) == hilbert_space_dimension
+            b
+        else
+            logmsg("[WARN]Could not guess a matching basis for N=$N dim=$hilbert_space_dimension")
+            missing
+        end
     end
 end
 
 function SimLib._convert_legacy_data(::Val{:eddata}, legacydata)
+    logmsg("[WARN]Guessing parameters while loading ED legacy data:")
+    logmsg("[WARN]  scale_fields")
+
     eev = legacydata.eev
     eon = legacydata.eon
     evals = legacydata.evals
@@ -137,11 +144,8 @@ function SimLib._convert_legacy_data(::Val{:eddata}, legacydata)
     dim = legacydata.dim
     α = legacydata.α
 
-    logmsg("[WARN]Guessing parameters while loading legacy data:")
-    logmsg("[WARN]  scale_fields = :ensemble")
-
-    savelocation = SaveLocation(prefix="", suffix="")
-    desc = EDDataDescriptor(geom, dim, N, α, shots, ρs, fields, :ensemble, basis, savelocation)
+    savelocation = SaveLocation(prefix="")
+    desc = EDDataDescriptor(geom, dim, N, α, shots, ρs, fields, missing, basis, savelocation)
     EDData(desc, eev, eon, evals)
 end
 

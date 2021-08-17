@@ -31,5 +31,5 @@ using .Ensembles
 export Ensembles, EnsembleDataDescriptor, EnsembleData, ENSEMBLE_INDICES, ensemble_predictions
 
 using .LSR
-export LSR, LSRDataDescriptor, LSRData, levelspacingratio
+export LSR, LSRDataDescriptor, LSRData, levelspacingratio, center_region
 end

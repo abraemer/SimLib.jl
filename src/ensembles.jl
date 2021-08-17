@@ -65,6 +65,7 @@ struct EnsembleData <: SimLib.AbstractSimpleData
     data::Array{Float64,4}
 end
 
+EnsembleData(args...; kwargs...) = EnsembleData(EnsembleDataDescriptor(args...; kwargs...))
 EnsembleData(desc::EnsembleDataDescriptor) = EnsembleData(desc, Array{Float64,4}(undef, desc.shots, length(desc.fields), length(desc.ρs), 3))
 
 function Base.getproperty(ensdata::EnsembleData, s::Symbol)
@@ -90,14 +91,12 @@ function SimLib._convert_legacy_data(::Val{:ensemble_data}, legacydata)
     shots = size(data, 1)
     ρs = legacydata.ρs
     fields = legacydata.fields
-    basis = zbasis(N)
 
-    logmsg("[WARN]Guessing parameters while loading legacy data:")
-    logmsg("[WARN]  scale_fields = :ensemble")
-    logmsg("[WARN]  basis = zbasis(N)")
+    logmsg("[WARN]Unable to reconstruct parameters while loading ensembles legacy data:")
+    logmsg("[WARN]  scale_fields, basis")
 
-    savelocation = SaveLocation(prefix="", suffix="")
-    edd = EDDataDescriptor(geom, dim, N, α, shots, ρs, fields, :ensemble, basis, savelocation)
+    savelocation = SaveLocation(prefix="")
+    edd = EDDataDescriptor(geom, dim, N, α, shots, ρs, fields, missing, missing, savelocation)
     ensdd = EnsembleDataDescriptor(edd)
     EnsembleData(ensdd, data)
 end

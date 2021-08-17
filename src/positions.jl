@@ -74,7 +74,7 @@ function SimLib._convert_legacy_data(::Val{:posdata}, legacydata)
     ρs = legacydata.ρs
     geom = legacydata.geometry
 
-    savelocation = SaveLocation(prefix="", suffix="")
+    savelocation = SaveLocation(prefix="")
     desc = PositionDataDescriptor(geom, dim, N, shots, ρs, savelocation)
 
     PositionData(desc, data)
