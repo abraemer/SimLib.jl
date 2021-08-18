@@ -6,7 +6,7 @@ using ..SimLib
 using ..SimLib: Maybe, FArray
 using XXZNumerics
 
-export PositionDataDescriptor, PositionData
+export PositionDataDescriptor, PositionData, load_positions
 
 ## Data structure
 
@@ -44,6 +44,8 @@ end
 
 SimLib._filename(desc::PositionDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size)
 filename(geometry, dimension, system_size) = @sprintf("positions/%s_%id_N_%02i", geometry, dimension, system_size)
+
+load_positions(geometry, dimension, system_size, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(PositionDataDescriptor(geometry, dimension, system_size); prefix, suffix)
 
 """
     struct PositionData

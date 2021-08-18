@@ -8,13 +8,15 @@
     edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, SpinFlip(zbasis(6)))
     ensdd = EnsembleDataDescriptor(edd)
 
-    ensdata = SimLib.load_or_create(ensdd) # should load the ED data since previous test saved it
+    ensdata = load_or_create(ensdd) # should load the ED data since previous test saved it
 
+    ensdata2 = load_ensemble(:box, 1, 7, 6; prefix=PREFIX)
     ## No idea for good test
     # check access of ensembles ?
-    @test ensdata.canonical == ensdata[:,:,:,ENSEMBLE_INDICES[:canonical]]
-    @test ensdata.microcanonical == ensdata[:,:,:,ENSEMBLE_INDICES[:microcanonical]]
-    @test ensdata.diagonal == ensdata[:,:,:,ENSEMBLE_INDICES[:diagonal]]
+    @test ensdata.canonical == ensdata2[:,:,:,ENSEMBLE_INDICES[:canonical]]
+    @test ensdata.microcanonical == ensdata2[:,:,:,ENSEMBLE_INDICES[:microcanonical]]
+    @test ensdata.diagonal == ensdata2[:,:,:,ENSEMBLE_INDICES[:diagonal]]
     # check attribute forwarding
     @test ensdd.fields == edd.fields
+    @test ensdata2.descriptor == ensdata.descriptor
 end

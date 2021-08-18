@@ -18,4 +18,7 @@
     @test std(lsrdata; center=0.5) ≈ dropdims(std(center_region(lsrdata, 0.5); dims=1); dims=1)
     # check attribute forwarding
     @test lsrdd.fields == edd.fields
+
+    lsrdata2 = load_lsr(:box, 1, 7, 6; prefix=PREFIX)
+    @test lsrdata2.descriptor == lsrdata.descriptor
 end

@@ -34,4 +34,6 @@
     @test edata1.eon ≈ edata2.eon
 
     save(edata1) # for next test
+    @test load_ed(:box, 1, 7, 6; prefix=PREFIX) !== nothing
+
 end

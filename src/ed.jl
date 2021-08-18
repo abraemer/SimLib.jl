@@ -11,7 +11,7 @@ using Printf: @sprintf
 using SharedArrays
 using XXZNumerics
 
-export EDDataDescriptor, EDData, run_ed
+export EDDataDescriptor, EDData, run_ed, load_ed
 
 ## Data structure
 
@@ -99,7 +99,7 @@ function EDData(desc::EDDataDescriptor)
     shots = desc.shots
     ρcount = length(desc.ρs)
     hs = length(desc.fields)
-    
+
     EDData(
         desc,
         FArray{5}(undef, N, hilbert_space_dim, shots, hs, ρcount),
@@ -112,6 +112,8 @@ end
 ## Saving/Loading
 SimLib._filename(desc::EDDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
 filename(geometry, dimension, system_size, α) = @sprintf("data/ed_%s_%id_alpha_%.1f_N_%02i", geometry, dimension, α, system_size)
+
+load_ed(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EDDataDescriptor(geometry, dimension, system_size, α); prefix, suffix)
 
 function _guess_basis(N, hilbert_space_dimension)
     if hilbert_space_dimension == 2^N
@@ -248,8 +250,8 @@ end
     for index in workload
         i, shot = _flat_to_indices(index, nshots)
         J = @view interactions[:,:, shot, i]
-        model = real.(symmetrize_op(symmetry, xxzmodel(J, -0.73)))        
-        
+        model = real.(symmetrize_op(symmetry, xxzmodel(J, -0.73)))
+
         for (k, h) in enumerate(field_values)
             copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
             try
@@ -267,7 +269,7 @@ end
                 eev_out[:, :, shot, k, i] .= NaN
                 evals_out[ :, shot, k, i] .= NaN
                 eon_out[   :, shot, k, i] .= NaN
-                
+
                 continue
             end
         end
@@ -302,7 +304,7 @@ function run_ed(desc::EDDataDescriptor, posdata::PositionData)
     logmsg("with $(desc.shots) realizations and  $(length(desc.fields)) field values")
     wcount = length(workers())
     if wcount > 1
-        logmsg("Running ED on $(wcount) PROCESSES") 
+        logmsg("Running ED on $(wcount) PROCESSES")
         _compute_parallel(desc, posdata)
     else
         logmsg("Running ED on $(Threads.nthreads()) THREADS")

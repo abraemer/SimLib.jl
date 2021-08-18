@@ -9,7 +9,7 @@ using Statistics: mean
 using LinearAlgebra
 import JLD2
 
-export ENSEMBLE_INDICES, EnsembleDataDescriptor, EnsembleData, ensemble_predictions
+export ENSEMBLE_INDICES, EnsembleDataDescriptor, EnsembleData, ensemble_predictions, load_ensemble
 
 ## Data structure
 
@@ -26,7 +26,7 @@ Carries the information to construct a [`EDDataDescriptor`](!ref) object.
  - field strengths
  - scaling of field strengths
  - symmetries to respect
-For `load`ing data only the first 4 fields are required. 
+For `load`ing data only the first 4 fields are required.
 Can also be constructed from a `PositionDataDescriptor` by supplying a the missing bits (α, fields).
 """
 struct EnsembleDataDescriptor <: SimLib.AbstractDataDescriptor
@@ -73,7 +73,7 @@ function Base.getproperty(ensdata::EnsembleData, s::Symbol)
         getfield(ensdata, s)
     elseif haskey(ENSEMBLE_INDICES, s)
         @view ensdata.data[:,:,:,ENSEMBLE_INDICES[s]]
-    else 
+    else
         getproperty(ensdata.descriptor, s)
     end
 end
@@ -81,6 +81,8 @@ end
 ## Saving/Loading
 SimLib._filename(desc::EnsembleDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
 filename(geometry, dim, N, α) = @sprintf("ensemble/%s_%id_alpha_%.1f_N_%02i", geometry, dim, α, N)
+
+load_ensemble(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EnsembleDataDescriptor(geometry, dimension, system_size, α); prefix, suffix)
 
 function SimLib._convert_legacy_data(::Val{:ensemble_data}, legacydata)
     data = legacydata.data

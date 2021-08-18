@@ -9,7 +9,7 @@ import Statistics
 using Printf: @sprintf
 import JLD2
 
-export levelspacingratio, LSRData, LSRDataDescriptor, center_region
+export levelspacingratio, LSRData, LSRDataDescriptor, center_region, load_lsr
 
 ## Data structure
 
@@ -26,7 +26,7 @@ Carries the information to construct a [`EDDataDescriptor`](!ref) object.
  - field strengths
  - scaling of field strengths
  - symmetries to respect
-For `load`ing data only the first 4 fields are required. 
+For `load`ing data only the first 4 fields are required.
 Can also be constructed from a `PositionDataDescriptor` by supplying a the missing bits (α, fields).
 """
 struct LSRDataDescriptor <: SimLib.AbstractDataDescriptor
@@ -78,8 +78,7 @@ DEFAULT_FOLDER = "lsr"
 SimLib._filename(desc::LSRDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
 filename(geometry, dim, N, α) = @sprintf("lsr/lsr_%s_%id_alpha_%.1f_N_%02i", geometry, dim, α, N)
 
-load(path) = JLD2.load(path)["lsrdata"]
-load(prefix, geometry, N, dim, α; folder=DEFAULT_FOLDER, suffix="") = load(lsr_datapath(prefix, geometry, N, dim, α; folder, suffix))
+load_lsr(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(LSRDataDescriptor(geometry, dimension, system_size, α); prefix, suffix)
 
 function SimLib._convert_legacy_data(::Val{:lsrdata}, legacydata)
     data = legacydata.data

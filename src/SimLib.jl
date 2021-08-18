@@ -21,15 +21,18 @@ include("ed.jl")
 include("ensembles.jl")
 include("lsr.jl")
 
+#TODO use @reexport to simplify
+
 using .Positions
-export Positions, PositionDataDescriptor, PositionData
+export Positions, PositionDataDescriptor, PositionData, load_positions
 
 using .ED
-export ED, EDDataDescriptor, EDData, run_ed
+export ED, EDDataDescriptor, EDData, run_ed, load_ed
 
 using .Ensembles
-export Ensembles, EnsembleDataDescriptor, EnsembleData, ENSEMBLE_INDICES, ensemble_predictions
+export Ensembles, EnsembleDataDescriptor, EnsembleData, ENSEMBLE_INDICES, ensemble_predictions, load_ensemble
 
 using .LSR
-export LSR, LSRDataDescriptor, LSRData, levelspacingratio, center_region
+export LSR, LSRDataDescriptor, LSRData, levelspacingratio, center_region, load_lsr
+
 end
