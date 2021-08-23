@@ -1,9 +1,9 @@
-#!/bin/sh 
-# ########## Begin Slurm header ########## 
-#SBATCH --nodes=1 
+#!/bin/sh
+# ########## Begin Slurm header ##########
+#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=12:00:00 
-#SBATCH --mem=300gb 
+#SBATCH --time=12:00:00
+#SBATCH --mem=300gb
 #SBATCH --cpus-per-task=48
 #SBATCH --job-name=zero-field
 #SBATCH --output="logs/zero-field-%j.out"
@@ -12,7 +12,7 @@
 # load modules
 # not needed - julia installed locally
 
-exec julia --color=no --procs 50 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
+exec julia --color=no --procs 50 --startup-file=no "${BASH_SOURCE[0]}" "$@"
 =#
 println("zero_field.slurm")
 
@@ -55,15 +55,13 @@ Pkg.status(; io=stdout)
 @everywhere LinearAlgebra.BLAS.set_num_threads(2)
 
 using XXZNumerics
-import SimLib.Positions
-import SimLib.ED
 
 ## constants and ARGS
-const PREFIX = joinpath(path_prefix(), "field-section")
+const PREFIX = joinpath(path_prefix(), "zero-field")
 @show PREFIX
 const GEOMETRY = Symbol(lowercase(ARGS[1]))
-const N = parse(Int, ARGS[2])
-const DIM = parse(Int, ARGS[3])
+const DIM = parse(Int, ARGS[2])
+const N = parse(Int, ARGS[3])
 const ALPHA = parse(Float64, ARGS[4])
 const ρs = [0.5:0.05:1.95..., 1.99]
 const SHOTS = 100
@@ -77,31 +75,7 @@ const BLOCK = div(N-1,2)
 @show SHOTS
 @show BLOCK
 
-## functions
-function createAndSave(shots, geom, N, dim, ρs)
-    logmsg("Creating Position data with $shots shots, $geom N=$N $(dim)d and $(length(ρs))")
-    data = Positions.PositionData(geom, ρs, shots, N, dim)
-    Positions.save(PREFIX, Positions.create_positions!(data))
-    data
-end
-
-function preparePosdata(geom, N, dim, ρs)
-    p = Positions.position_datapath(PREFIX, geom, N, dim)
-    if !isfile(p)
-        logmsg("No position data found!")
-        createAndSave(SHOTS, geom, N, dim, ρs)
-    else
-        logmsg("Found existing position data!")
-        data = Positions.load(p)
-        if Positions.ρs(data) == ρs
-            data
-        else
-            logmsg("Does not match the required densities: generating anew.")
-            createAndSave(SHOTS, geom, N, dim, ρs)
-        end
-    end
-end
-
+const LOCATION = SaveLocation(;prefix=PREFIX)
 
 ## main
 
@@ -110,12 +84,9 @@ logmsg("Starting!")
 
 @time begin
     ## DO STUFF
-    logmsg("Preparing position data")
-    posdata = preparePosdata(GEOMETRY, N, DIM, ρs)
-    logmsg("Running ED")
-    eddata = ED.run_ed_parallel2(posdata, ALPHA, [0]; symmetry=ZBlockBasis(N, BLOCK)) # choose biggest block # applying spinflip does not change anything
-    logmsg("Saving")
-    ED.save(PREFIX, eddata; suffix="-k_$BLOCK")
-    logmsg("Done!")
+    lsrdd = LSRDataDescriptor(GEOMETRY, DIM, N, ALPHA, SHOTS, ρs, [0], :ensemble, zbasis(N, BLOCK), LOCATION)
+    logmsg("Computing: $lsrdd")
+    save(create(lsrdd))
 end
+logmsg("Done!")
 ## REMEMBER TO SET RESOURCE HEADER FOR SLURM!
