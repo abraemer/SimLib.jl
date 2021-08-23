@@ -113,7 +113,7 @@ end
 SimLib._filename(desc::EDDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
 filename(geometry, dimension, system_size, α) = @sprintf("data/ed_%s_%id_alpha_%.1f_N_%02i", geometry, dimension, α, system_size)
 
-load_ed(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EDDataDescriptor(geometry, dimension, system_size, α); prefix, suffix)
+load_ed(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EDDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
 
 function _guess_basis(N, hilbert_space_dimension)
     if hilbert_space_dimension == 2^N

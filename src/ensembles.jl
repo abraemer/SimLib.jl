@@ -82,7 +82,7 @@ end
 SimLib._filename(desc::EnsembleDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
 filename(geometry, dim, N, α) = @sprintf("ensemble/%s_%id_alpha_%.1f_N_%02i", geometry, dim, α, N)
 
-load_ensemble(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EnsembleDataDescriptor(geometry, dimension, system_size, α); prefix, suffix)
+load_ensemble(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EnsembleDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
 
 function SimLib._convert_legacy_data(::Val{:ensemble_data}, legacydata)
     data = legacydata.data

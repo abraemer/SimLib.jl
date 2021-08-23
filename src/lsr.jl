@@ -78,17 +78,18 @@ DEFAULT_FOLDER = "lsr"
 SimLib._filename(desc::LSRDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
 filename(geometry, dim, N, α) = @sprintf("lsr/lsr_%s_%id_alpha_%.1f_N_%02i", geometry, dim, α, N)
 
-load_lsr(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(LSRDataDescriptor(geometry, dimension, system_size, α); prefix, suffix)
+load_lsr(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(LSRDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
 
 function SimLib._convert_legacy_data(::Val{:lsrdata}, legacydata)
     data = legacydata.data
-    geom = legacydata.geometry
-    dim = legacydata.dim
-    N = legacydata.N
-    α = legacydata.α
+    desc = legacydata.descriptor
+    geom = desc.geometry
+    dim = desc.dim
+    N = desc.N
+    α = desc.α
     shots = size(data, 1)
-    ρs = legacydata.ρs
-    fields = legacydata.fields
+    ρs = desc.ρs
+    fields = desc.fields
 
     logmsg("[WARN]Unable to reconstruct parameters while loading LSR legacy data:")
     logmsg("[WARN]  scale_fields, basis")

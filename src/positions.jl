@@ -45,7 +45,7 @@ end
 SimLib._filename(desc::PositionDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size)
 filename(geometry, dimension, system_size) = @sprintf("positions/%s_%id_N_%02i", geometry, dimension, system_size)
 
-load_positions(geometry, dimension, system_size, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(PositionDataDescriptor(geometry, dimension, system_size); prefix, suffix)
+load_positions(geometry, dimension, system_size, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(PositionDataDescriptor(geometry, dimension, system_size; prefix, suffix))
 
 """
     struct PositionData
