@@ -1,76 +1,155 @@
 module ED
 
 using ..Positions
-using ..SimLib: logmsg, geometry_from_density
+using ..SimLib
+using ..SimLib: Maybe, FArray
 
 using Distributed
-using JLD2
+import JLD2
 using LinearAlgebra
 using Printf: @sprintf
 using SharedArrays
 using XXZNumerics
 
-# simplify type definitions
-const _FARRAY{N} = Array{Float64, N} where N
+export EDDataDescriptor, EDData, run_ed, load_ed
 
 ## Data structure
 
-# index order
-# [(spin,) eigen_state, shot, h, rho]
-struct EDData
+"""
+    struct EDDataDescriptor
+
+The important bits of information needed to specify for performing exact diagonalization on disordered XXZ Heisenberg models:
+ - geometry
+ - dimension
+ - system_size
+ - α
+ - shots
+ - densities ρs
+ - field strengths
+ - scaling of field strengths
+ - symmetries to respect
+For `load`ing data only the first 4 fields are required
+Can also be constructed from a `PositionDataDescriptor` by supplying a the missing bits (α, fields).
+"""
+struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
     geometry::Symbol
-    dim::Int64
+    dimension::Int
+    system_size::Int
     α::Float64
-    ρs::_FARRAY{1}
-    fields::_FARRAY{1}
-    eev::_FARRAY{5} # eigenstate expectation value of x magnetization ⟨i|Sⁱₓ|i⟩
-    eon::_FARRAY{4} # eigenstate occupation number |⟨i|ψ⟩|²
-    evals::_FARRAY{4} # energy eigenvalues Eᵢ
+    shots::Maybe{Int}
+    ρs::Maybe{FArray{1}}
+    fields::Maybe{FArray{1}}
+    scale_fields::Maybe{Symbol}
+    basis::Maybe{<:XXZNumerics.Symmetry.AbstractBasis}
+    pathdata::SaveLocation
+    function EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, pathdata::SaveLocation)
+        geometry ∈ SimLib.GEOMETRIES || error("Unknown geometry: $geom")
+        scale_fields ∈ [:none, :ensemble, :shot]
+        new(geometry, dimension, system_size, α, shots, ismissing(ρs) ? missing : unique!(sort(vec(ρs))), ismissing(fields) ? missing : unique!(sort(vec(fields))), scale_fields, basis, pathdata::SaveLocation)
+    end
 end
 
-function EDData(geometry, dim, α, ρs, shots, system_size, fields)
-    hilbert_space_dim = 2^(system_size-1) # due to symmetry
-    hs = length(fields)
-    
+EDDataDescriptor(posdata::PositionDataDescriptor, α, fields=missing, scale_fields=missing, basis=SpinFlip(zbasis(posdata.system_size)); prefix=posdata.pathdata.prefix, suffix=posdata.pathdata.suffix) =
+    EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, α, posdata.shots, posdata.ρs, fields, scale_fields, basis, SaveLocation(prefix, suffix))
+
+EDDataDescriptor(posdata::PositionData, args...; kwargs...) = EDDataDescriptor(descriptor(posdata), args...; kwargs...)
+
+function EDDataDescriptor(geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=missing, basis=SpinFlip(zbasis(system_size)), savelocation=SaveLocation(); prefix=savelocation.prefix, suffix=savelocation.suffix)
+    EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, SaveLocation(; prefix, suffix))
+end
+
+function Base.:(==)(d1::EDDataDescriptor, d2::EDDataDescriptor)
+    all(getfield(d1, f) == getfield(d2, f) for f in [:geometry, :dimension, :α, :shots, :ρs, :fields, :scale_fields, :basis])
+end
+
+# index order
+# [(spin,) eigen_state, shot, h, rho]
+"""
+    struct EDData
+
+Stores the actual data for the positions specified by the descriptor [`EDDataDescriptor`](@ref).
+
+# Fields
+ - `eev` Eigenstate Expectation Values for chosen operators ⟨i|Oʲ|i⟩ (default: Sₓ for each spin)
+ - `eon` Eigenstate Occupation Numbers |⟨i|ψ⟩|²
+ - `evals` Energy Eigenvalues Eᵢ
+
+# Index order
+The indices mean:
+ - operator index (only applicable for `eev` field)
+ - index of the eigen_state (from 1 to `hilbert_space_dimension`)
+ - shot number
+ - field index
+ - density ρ
+
+The default save directory is "data".
+"""
+struct EDData <: SimLib.AbstractData
+    descriptor::EDDataDescriptor
+    eev::FArray{5} # eigenstate expectation value of x magnetization ⟨i|Sⁱₓ|i⟩
+    eon::FArray{4} # eigenstate occupation number |⟨i|ψ⟩|²
+    evals::FArray{4} # energy eigenvalues Eᵢ
+end
+
+EDData(args...; kwargs...) = EDData(EDDataDescriptor(args...; kwargs...))
+
+function EDData(desc::EDDataDescriptor)
+    hilbert_space_dim = basis_size(desc.basis)
+    N = desc.system_size
+    shots = desc.shots
+    ρcount = length(desc.ρs)
+    hs = length(desc.fields)
+
     EDData(
-        geometry,
-        dim,
-        α,
-        sort(ρs),
-        fields,
-        _FARRAY{5}(undef, system_size, hilbert_space_dim, shots, hs, length(ρs)),
-        _FARRAY{4}(undef, hilbert_space_dim, shots, hs, length(ρs)),
-        _FARRAY{4}(undef, hilbert_space_dim, shots, hs, length(ρs)),
+        desc,
+        FArray{5}(undef, N, hilbert_space_dim, shots, hs, ρcount),
+        FArray{4}(undef, hilbert_space_dim, shots, hs, ρcount),
+        FArray{4}(undef, hilbert_space_dim, shots, hs, ρcount),
     )
 end
 
-EDData(posdata::PositionData, α, fields) = EDData(Positions.geometry(posdata), Positions.dimension(posdata), α, Positions.ρs(posdata), Positions.shots(posdata), Positions.system_size(posdata), fields)
-
-system_size(eddata::EDData) = size(eddata.eev, 1)
-hilbert_space_dimension(eddata::EDData) = size(eddata.eev, 2)
-shots(eddata::EDData) = size(eddata.eev, 3)
-ρ_values(eddata::EDData) = eddata.ρs
-fields(eddata::EDData) = eddata.fields
-eev(eddata::EDData) = eddata.eev
-eon(eddata::EDData) = eddata.eon
-evals(eddata::EDData) = eddata.evals
-α(eddata::EDData) = eddata.α
-geometry(eddata::EDData) = eddata.geometry
-dimension(eddata::EDData) = eddata.dim
 
 ## Saving/Loading
-DEFAULT_FOLDER = "data"
-ed_datapath(prefix, geometry, N, dim, α; folder=DEFAULT_FOLDER, suffix="") = joinpath(prefix, folder, @sprintf("ed_%s_%id_alpha_%.1f_N_%02i%s.jld2", geometry, dim, α, N, suffix))
-ed_datapath(prefix, eddata::EDData; folder=DEFAULT_FOLDER, suffix="") = ed_datapath(prefix, geometry(eddata), system_size(eddata), dimension(eddata), α(eddata); folder, suffix)
+SimLib._filename(desc::EDDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
+filename(geometry, dimension, system_size, α) = @sprintf("data/ed_%s_%id_alpha_%.1f_N_%02i", geometry, dimension, α, system_size)
 
-function save(prefix, eddata::EDData; folder=DEFAULT_FOLDER, suffix="")
-    path = ed_datapath(prefix, eddata; folder, suffix)
-    mkpath(dirname(path))
-    JLD2.jldsave(path; eddata)
+load_ed(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EDDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
+
+function _guess_basis(N, hilbert_space_dimension)
+    if hilbert_space_dimension == 2^N
+        zbasis(N)
+    elseif hilbert_space_dimension == 2^(N-1)
+        SpinFlip(zbasis(N))
+    else
+        b = zbasis(N, div(N-1,2))
+        if basis_size(b) == hilbert_space_dimension
+            b
+        else
+            logmsg("[WARN]Could not guess a matching basis for N=$N dim=$hilbert_space_dimension")
+            missing
+        end
+    end
 end
 
-load(path) = JLD2.load(path)["eddata"]
-load(prefix, geometry, N, dim, α; folder=DEFAULT_FOLDER, suffix="") = load(ed_datapath(prefix, geometry, N, dim, α; folder, suffix))
+function SimLib._convert_legacy_data(::Val{:eddata}, legacydata)
+    logmsg("[WARN]Guessing parameters while loading ED legacy data:")
+    logmsg("[WARN]  scale_fields")
+
+    eev = legacydata.eev
+    eon = legacydata.eon
+    evals = legacydata.evals
+    N, hilbert_space_dimension, shots, _, _ = size(eev)
+    basis = _guess_basis(N, hilbert_space_dimension)
+    ρs = legacydata.ρs
+    fields = legacydata.fields
+    geom = legacydata.geometry
+    dim = legacydata.dim
+    α = legacydata.α
+
+    savelocation = SaveLocation(prefix="")
+    desc = EDDataDescriptor(geom, dim, N, α, shots, ρs, fields, missing, basis, savelocation)
+    EDData(desc, eev, eon, evals)
+end
 
 ## main function
 function _ensemble_J_mean(interaction, geometry, positions)
@@ -92,157 +171,87 @@ function _compute_core!(eev_out, evals_out, eon_out, model, field_values, field_
     end
 end
 
-run_ed(posdata::PositionData, α, fields; scale_field=:ensemble) = run_ed!(EDData(posdata, α, fields), posdata; scale_field)
-
-function run_ed!(eddata::EDData, posdata::PositionData; scale_field=:ensemble)
-    N = system_size(eddata)
-    dim = Positions.dimension(posdata)
-    ρs = ρ_values(eddata)
-    field_values = fields(eddata)
-    nshots = shots(eddata)
-    interaction = PowerLaw(α(eddata))
-    spin_ops = symmetrize_op.(op_list(σx/2, N))
-    field_operator = sum(spin_ops)
-    ψ0 = vec(symmetrize_state(foldl(⊗, ((up+down)/√2 for _ in 1:N))))
-
-    logmsg("ToDo: rho=$ρs")
-    logmsg("with $nshots realizations and  $(length(field_values)) field values")
-    for (i, ρ) in enumerate(ρs)
-        logmsg("rho = $ρ")
-        geom = geometry_from_density(geometry(eddata), ρ, N, dim)
-        ensemble_J_mean = 0
-        if scale_field == :ensemble
-            # compute the ensembles mean J
-            ensemble_J_mean = _ensemble_J_mean(interaction, geom, data(posdata)[:,:,:,i])
-            logmsg("Ensemble J mean for rho_$i=$ρ: $ensemble_J_mean")
-        end
-        Threads.@threads for shot in 1:nshots
-            logmsg(@sprintf("%03i/%03i", shot, nshots))
-            J = interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
-            model = symmetrize_op(xxzmodel(J, -0.73))
-            normed_field_values = field_values
-            if scale_field == :shot
-                normed_field_values *= sum(J)/N
-            elseif scale_field == :ensemble
-                normed_field_values *= ensemble_J_mean
-            end
-            _compute_core!(
-                view(eddata.eev, :,:,shot,:,i), view(eddata.evals, :,shot,:,i), view(eddata.eon, :,shot,:,i),
-                model, normed_field_values, field_operator, spin_ops, ψ0)
-            # for (k, h) in enumerate(normed_field_values)
-            #     H = model + h*field_operator
-            #     evals, evecs = eigen!(Hermitian(Matrix(H)))
-            #     for (l, evec) in enumerate(eachcol(evecs))
-            #         for (spin, op) in enumerate(spin_ops)
-            #             eev(eddata)[spin, l, shot, k, i] = real(dot(evec, op, evec)) # dot conjugates the first arg
-            #         end
-            #     end
-            #     eddata.evals[:,shot, k, i] = evals
-            #     eddata.eon[:, shot, k, i] .= abs2.(evecs' * ψ0)
-            # end
-        end
-    end
-    eddata
-end
-
-function _compute_core_parallel!(msg, eev_out, evals_out, eon_out, model, field_values, field_operator, operators, ψ0)
-    logmsg(msg)
-    _compute_core!(eev_out, evals_out, eon_out, model, field_values, field_operator, operators, ψ0)
-end
-
-function run_ed_parallel(posdata::PositionData, α, fields; scale_field=:ensemble, processes=workers(), symmetry=FullZBasis(Positions.system_size(posdata)))
-    N = Positions.system_size(posdata)
-    dim = Positions.dimension(posdata)
-    ρs = Positions.ρs(posdata)
-    nshots = Positions.shots(posdata)
-    hilbert_space_dim = basis_size(symmetry)
-    geometry = Positions.geometry(posdata)
-    
-    next_worker = let nworkers = length(processes); worker_index = 0;
-        function inner()
-            next_index = mod1(worker_index, nworkers)
-            worker_index += 1
-            processes[next_index]
-        end
-    end
-    
-    #TODO only share with specified workers in processes arg
-    eev = SharedArray{Float64}((N, hilbert_space_dim, nshots, length(fields), length(ρs)))
-    evals = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
-    eon = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
-
-    done = 0
-    todo = 0
-
-    interaction = PowerLaw(α)
-    spin_ops = symmetrize_op.(Ref(symmetry), op_list(σx/2, N))
-    field_operator = sum(spin_ops)
-    ψ0 = SharedArray(vec(symmetrize_state(symmetry, foldl(⊗, ((up+down)/√2 for _ in 1:N)))))
-
-    logmsg("ToDo: rho=$ρs")
-    logmsg("with $nshots realizations and  $(length(fields)) field values")
-    @sync begin
-        for (i, ρ) in enumerate(ρs)
-            logmsg("rho = $ρ"; doflush=false) # flush yields so taks start running
-            geom = geometry_from_density(geometry, ρ, N, dim)
-            ensemble_J_mean = 0
-            if scale_field == :ensemble
-                # compute the ensembles mean J
-                ensemble_J_mean = _ensemble_J_mean(interaction, geom, data(posdata)[:,:,:,i])
-                logmsg("Ensemble J mean for rho_$i=$ρ: $ensemble_J_mean"; doflush=false)
-            end
-            for shot in 1:nshots
-                todo += 1
-                worker = next_worker()
-                @async begin
-                    J = interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
-                    model = symmetrize_op(symmetry, xxzmodel(J, -0.73))
-                    normed_field_values = fields
-                    if scale_field == :shot
-                        normed_field_values *= sum(J)/N
-                    elseif scale_field == :ensemble
-                        normed_field_values *= ensemble_J_mean
-                    end
-                    #logmsg(@sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker))
-                    remotecall_wait(_compute_core!, worker,
-                        view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
-                        model, normed_field_values, field_operator, spin_ops, ψ0)
-                    done += 1
-                    logmsg(@sprintf("Done %03i/%03i - #rho =%2i - %03i/%03i on #%02i", done, todo, i, shot, nshots, worker))
-                end
-                #logmsg("Scheduled #$todo")
-                # @spawnat worker _compute_core_parallel!(@sprintf("#rho =%2i - %03i/%03i on #%02i", i, shot, nshots, worker),
-                #     view(eev, :,:,shot,:,i), view(evals, :,shot,:,i), view(eon, :,shot,:,i),
-                #     model, normed_field_values, field_operator, spin_ops, ψ0)
-            end
-        end
-        logmsg("All queued")
-    end
-    EDData(geometry, dim, α, ρs, fields, sdata(eev), sdata(eon), sdata(evals))
-end
-
+run_ed(posdata::PositionData, args...; kwargs...) = run_ed!(EDDataDescriptor(posdata, args...; kwargs...), posdata)
 
 _flat_to_indices(index, nshots) = fldmod1(index, nshots)
-function _chunk_flat(interactions)
-    # determine the index range this worker should work on by
-    # splitting the interaction array jointly along ρ and shot axes
-    idx = indexpids(interactions)
-    nchunks = length(procs(interactions))
-    total = size(interactions, 3) * size(interactions, 4) # nshots*nρs
+
+function _workload_chunks(total, nchunks)
     splits = [round(Int, s) for s in range(0; stop=total, length=nchunks+1)]
-    (splits[idx]+1):splits[idx+1]
+    [(splits[i]+1):splits[i+1] for i in 1:nchunks]
 end
 
-function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, field_values, field_operator, operators, ψ0, symmetry)
-    matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate
-    vec = zeros(eltype(ψ0), size(ψ0))
+function _compute_parallel(edd, posdata)
+    N = edd.system_size
+    hilbert_space_dim = basis_size(edd.basis)
+    nshots = edd.shots
+    nfields = length(edd.fields)
+    nρs = length(edd.ρs)
+    eev   = SharedArray{Float64}((N, hilbert_space_dim, nshots, nfields, nρs))
+    evals = SharedArray{Float64}(   (hilbert_space_dim, nshots, nfields, nρs))
+    eon   = SharedArray{Float64}(   (hilbert_space_dim, nshots, nfields, nρs))
+
+    interactions = SharedArray{Float64}((N,N,nshots,nρs))
+    _compute_interactions!(interactions, edd, posdata)
+
+    workloads = _workload_chunks(nshots*nρs, length(procs(interactions)))
+
+    @sync for (i, p) in enumerate(procs(interactions))
+        @async remotecall_wait(_compute_parallel_job!, p,
+            eev, evals, eon, interactions, workloads[i], edd)
+    end
+
+    EDData(edd, sdata(eev), sdata(eon), sdata(evals))
+end
+
+function _compute_parallel_job!(eev, evals, eon, interactions, workload, desc)
+    # build operators and initial state here
+    # -> is it worth to just to this once and use SharedArrays?
+    # probably not much of a difference as the opjects here are quite small in RAM
+    N = desc.system_size
+    spin_ops = real.(symmetrize_op.(Ref(desc.basis), op_list(σx/2, N)))
+    field_operator = sum(spin_ops)
+    ψ0 = vec(symmetrize_state(desc.basis, foldl(⊗, ((up+down)/√2 for _ in 1:N)))) # all up in x-direction
+
+    logmsg("Range: $(workload) on #$(indexpids(interactions))")
+    _compute_core!(eev, evals, eon, interactions, workload, spin_ops, desc.fields, field_operator, ψ0, desc.basis)
+end
+
+function _compute_threaded(edd, posdata)
+    N = edd.system_size
+    hilbert_space_dim = basis_size(edd.basis)
+    nshots = edd.shots
+    nfields = length(edd.fields)
+    nρs = length(edd.ρs)
+    eev   = FArray{5}(undef, (N, hilbert_space_dim, nshots, nfields, nρs))
+    evals = FArray{4}(undef,    (hilbert_space_dim, nshots, nfields, nρs))
+    eon   = FArray{4}(undef,    (hilbert_space_dim, nshots, nfields, nρs))
+
+    spin_ops = real.(symmetrize_op.(Ref(edd.basis), op_list(σx/2, N)))
+    field_operator = sum(spin_ops)
+    ψ0 = vec(symmetrize_state(edd.basis, foldl(⊗, ((up+down)/√2 for _ in 1:N))))
+
+    interactions = FArray{4}(undef, (N,N,nshots,nρs))
+    _compute_interactions!(interactions, edd, posdata)
+
+    # use one thread less as the main thread should not be used for work (I think)
+    workers = max(1, Threads.nthreads()-1)
+    workloads = _workload_chunks(nshots*nρs, workers)
+    @sync for i in 1:workers
+        Threads.@spawn _compute_core!(eev, evals, eon, interactions, workloads[i], spin_ops, edd.fields, field_operator, ψ0, edd.basis)
+    end
+
+    EDData(edd, eev, eon, evals)
+end
+
+@inline function _compute_core!(eev_out, evals_out, eon_out, interactions, workload, operators, field_values, field_operator, ψ0, symmetry)
     nshots = size(interactions, 3)
-    logmsg("Range: $(_chunk_flat(interactions)) on #0$(indexpids(interactions))")
-    for index in _chunk_flat(interactions)
+    matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate, but DENSE
+    vec = zeros(eltype(ψ0), size(ψ0))
+    for index in workload
         i, shot = _flat_to_indices(index, nshots)
         J = @view interactions[:,:, shot, i]
-        model = real.(symmetrize_op(symmetry, xxzmodel(J, -0.73)))        
-        
+        model = real.(symmetrize_op(symmetry, xxzmodel(J, -0.73)))
+
         for (k, h) in enumerate(field_values)
             copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
             try
@@ -257,57 +266,58 @@ function _compute_core_parallel2!(eev_out, evals_out, eon_out, interactions, fie
             catch e;
                 logmsg("Error occured for #field=$k shot=$shot #rho=$i: $e")
                 display(stacktrace(catch_backtrace()))
+                eev_out[:, :, shot, k, i] .= NaN
+                evals_out[ :, shot, k, i] .= NaN
+                eon_out[   :, shot, k, i] .= NaN
+
                 continue
             end
         end
-        logmsg(@sprintf("Done %03i - #rho =%2i - %03i/%03i on #%02i", index, i, shot, nshots, indexpids(interactions)))
+        logmsg(@sprintf("Done %03i - #rho =%2i - %03i/%03i", index, i, shot, nshots))
     end
 end
 
-function run_ed_parallel2(posdata::PositionData, α, fields; scale_field=:ensemble, processes=workers(), symmetry=SpinFlip(FullZBasis(Positions.system_size(posdata))))
-    N = Positions.system_size(posdata)
-    dim = Positions.dimension(posdata)
-    ρs = Positions.ρs(posdata)
-    nshots = Positions.shots(posdata)
-    hilbert_space_dim = basis_size(symmetry)
-    geometry = Positions.geometry(posdata)
-
-    if length(processes) == 0
-        processes = workers()        
-    end
-    
-    #TODO only share with specified workers in processes arg    
-    eev = SharedArray{Float64}((N, hilbert_space_dim, nshots, length(fields), length(ρs)))
-    evals = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
-    eon = SharedArray{Float64}((hilbert_space_dim, nshots, length(fields), length(ρs)))
-
-    interaction = PowerLaw(α)
-    spin_ops = real.(symmetrize_op.(Ref(symmetry), op_list(σx/2, N)))
-    field_operator = sum(spin_ops)
-    ψ0 = SharedArray(vec(symmetrize_state(symmetry, foldl(⊗, ((up+down)/√2 for _ in 1:N)))))
-
-    interactions = SharedArray{Float64}((N,N,nshots,length(ρs)))
-    logmsg("Calculating interactions")
-    for i in 1:length(ρs)
-        geom = geometry_from_density(geometry, ρs[i], N, dim)
+function _compute_interactions!(arr, edd, posdata)
+    logmsg("Calculating interactions (scaling = $(edd.scale_fields))")
+    interaction = PowerLaw(edd.α)
+    nshots, N = edd.shots, edd.system_size
+    for (i, ρ) in enumerate(edd.ρs)
+        geom = geometry_from_density(edd.geometry, ρ, N, edd.dimension)
         for shot in 1:nshots
-            interactions[:,:, shot, i] .= interaction_matrix(interaction, geom, data(posdata)[:,:,shot,i])
-            if scale_field == :shot
-                interactions[:,:, shot, i] ./= sum(view(interactions, :,:, shot, i))/N
+            arr[:,:, shot, i] .= interaction_matrix(interaction, geom, posdata[:,:,shot,i])
+            if edd.scale_fields == :shot
+                arr[:,:, shot, i] ./= sum(view(arr, :,:, shot, i))/N
             end
         end
-        if scale_field == :ensemble
-            interactions[:,:, :, i] ./= sum(@view interactions[:,:,:,i])/nshots/N
+        if edd.scale_fields == :ensemble
+            factor = sum(@view arr[:,:,:,i])/nshots/N
+            logmsg("rho = $ρ -> J_mean = $factor")
+            arr[:,:,:,i] ./= factor
         end
     end
+end
 
-    logmsg("ToDo: rho=$ρs")
-    logmsg("with $nshots realizations and  $(length(fields)) field values")
-    @sync for p in processes
-        @async remotecall_wait(_compute_core_parallel2!, p,
-            eev, evals, eon, interactions, fields, field_operator, spin_ops, ψ0, symmetry)
+run_ed(desc::EDDataDescriptor) = create(desc)
+function run_ed(desc::EDDataDescriptor, posdata::PositionData)
+    # decide on mode of operation
+    logmsg("ToDo: rho=$(desc.ρs)")
+    logmsg("with $(desc.shots) realizations and  $(length(desc.fields)) field values")
+    wcount = length(workers())
+    if wcount > 1
+        logmsg("Running ED on $(wcount) PROCESSES")
+        _compute_parallel(desc, posdata)
+    else
+        logmsg("Running ED on $(Threads.nthreads()) THREADS")
+        _compute_threaded(desc, posdata)
     end
-    EDData(geometry, dim, α, ρs, fields, sdata(eev), sdata(eon), sdata(evals))
+end
+
+function SimLib.create(desc::EDDataDescriptor)
+    logmsg("Creating ED data for $(desc)")
+    pdd = PositionDataDescriptor(desc.geometry, desc.dimension, desc.system_size, desc.shots, desc.ρs, desc.pathdata)
+    logmsg("Needed Position data $(pdd)")
+    posdata = load_or_create(pdd)
+    run_ed(desc, posdata)
 end
 
 end #module

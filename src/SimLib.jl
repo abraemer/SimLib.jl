@@ -1,26 +1,38 @@
 module SimLib
 
 using Dates
-using JLD2
+import JLD2
 using LinearAlgebra
 using Statistics
 using XXZNumerics
 
 
-export logmsg, path_prefix, parse_geometry, geometry_from_density, levelspacingratio
+export logmsg, path_prefix, parse_geometry, geometry_from_density, meandrop, stddrop
+export SaveLocation, descriptor, datapath, create, save, load, load_or_create
+
+# simplify type definitions
+const FArray{N} = Array{Float64, N} where N
+const Maybe{T} = Union{Missing, T} where T
 
 include("general.jl")
+include("data.jl")
 include("positions.jl")
 include("ed.jl")
 include("ensembles.jl")
 include("lsr.jl")
 
+#TODO use @reexport to simplify
+
 using .Positions
-export Positions, PositionData, create_positions!
+export Positions, PositionDataDescriptor, PositionData, load_positions
 
 using .ED
-export ED, EDData, run_ed_parallel2
+export ED, EDDataDescriptor, EDData, run_ed, load_ed
+
+using .Ensembles
+export Ensembles, EnsembleDataDescriptor, EnsembleData, ENSEMBLE_INDICES, ensemble_predictions, load_ensemble
 
 using .LSR
-export LSR, levelspacingratio, LSRData, LSRDataDescriptor
+export LSR, LSRDataDescriptor, LSRData, levelspacingratio, center_region, load_lsr
+
 end

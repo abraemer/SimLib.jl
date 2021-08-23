@@ -1,56 +1,99 @@
 module Positions
 
-using JLD2
+import JLD2
 using Printf: @sprintf
-using SimLib
+using ..SimLib
+using ..SimLib: Maybe, FArray
 using XXZNumerics
 
-export PositionData, dimension, system_size, shots, ρs, geometry, data, position_datapath, save, load, create_positions!
+export PositionDataDescriptor, PositionData, load_positions
 
 ## Data structure
 
-struct PositionData
+"""
+    struct PositionDataDescriptor
+
+The important bits of information needed to specify a set positions are:
+ - geometry
+ - dimension
+ - system_size
+ - shots
+ - densities ρs
+For `load`ing data the last 2 may be omitted.
+"""
+struct PositionDataDescriptor <: SimLib.AbstractDataDescriptor
     geometry::Symbol
-    ρs::Vector{Float64}
+    dimension::Int
+    system_size::Int
+    shots::Maybe{Int}
+    ρs::Maybe{FArray{1}}
+    pathdata::SaveLocation
+    function PositionDataDescriptor(geom, dimension, system_size, shots, ρs, pathdata::SaveLocation)
+        geom ∈ SimLib.GEOMETRIES || error("Unknown geometry: $geom")
+        new(geom, dimension, system_size, shots, ismissing(ρs) ? missing : unique!(sort(vec(ρs))), pathdata)
+    end
+end
+
+function PositionDataDescriptor(geom, dimension, system_size, shots=missing, ρs=missing; prefix=path_prefix(), suffix="")
+    PositionDataDescriptor(geom, dimension, system_size, shots, ρs, SaveLocation(prefix, suffix))
+end
+
+function Base.:(==)(d1::PositionDataDescriptor, d2::PositionDataDescriptor)
+    all(getfield(d1, f) == getfield(d2, f) for f in [:geometry, :dimension, :system_size, :shots, :ρs])
+end
+
+SimLib._filename(desc::PositionDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size)
+filename(geometry, dimension, system_size) = @sprintf("positions/%s_%id_N_%02i", geometry, dimension, system_size)
+
+load_positions(geometry, dimension, system_size, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(PositionDataDescriptor(geometry, dimension, system_size; prefix, suffix))
+
+"""
+    struct PositionData
+
+Stores the actual data for the positions specified by the descriptor [`PositionDataDescriptor`](@ref).
+The indices mean:
+ - coordinate index
+ - particle
+ - shot number
+ - density ρ
+Thus the data as dimensions: [D, N, #SHOT, #ρ]
+
+The default save directory is "positions".
+"""
+struct PositionData <: SimLib.AbstractSimpleData
+    descriptor::PositionDataDescriptor
     # [xyz, N, shot, ρ]
-    coords::Array{Float64, 4}
+    data::Array{Float64, 4}
 end
 
-PositionData(geometry, ρs, shots, system_size, dim) = PositionData(geometry, sort(vec(ρs)), zeros(Float64, dim, system_size, shots, length(ρs)))
 
-dimension(posdata::PositionData) = size(posdata.coords, 1)
-system_size(posdata::PositionData) = size(posdata.coords, 2)
-shots(posdata::PositionData) = size(posdata.coords, 3)
-ρs(posdata::PositionData) = posdata.ρs
-geometry(posdata::PositionData) = posdata.geometry
-data(posdata::PositionData) = posdata.coords
+PositionData(desc::PositionDataDescriptor) = PositionData(desc, zeros(Float64, desc.dimension, desc.system_size, desc.shots, length(desc.ρs)))
+PositionData(args...; kwargs...) = PositionData(PositionDataDescriptor(args..., kwargs...))
 
-Base.getindex(posdata::PositionData, inds...) = getindex(data(posdata), inds...)
-Base.setindex!(posdata::PositionData, args...) = setindex!(data(posdata), args...)
+function SimLib._convert_legacy_data(::Val{:posdata}, legacydata)
+    data = legacydata.coords
+    dim, N, shots, _ = size(data)
+    ρs = legacydata.ρs
+    geom = legacydata.geometry
 
-## Saving/Loading
-position_datapath(prefix, geometry, N, dim) = joinpath(prefix, "positions", @sprintf("%s_%id_N_%02i.jld2", geometry, dim, N))
-position_datapath(prefix, posdata::PositionData) = position_datapath(prefix, geometry(posdata), system_size(posdata), dimension(posdata))
+    savelocation = SaveLocation(prefix="")
+    desc = PositionDataDescriptor(geom, dim, N, shots, ρs, savelocation)
 
-function save(prefix, posdata::PositionData)
-    path = position_datapath(prefix, posdata)
-    mkpath(dirname(path))
-    JLD2.jldsave(path; posdata)
+    PositionData(desc, data)
 end
-
-load(path) = JLD2.load(path)["posdata"]
-load(prefix, geometry, N, dim) = load(position_datapath(prefix, geometry, N, dim))
 
 ## main function
 function create_positions!(empty_posdata; fail_rate=0.3)
-    dim = dimension(empty_posdata)
-    N = system_size(empty_posdata)
+    logmsg("Generating positions for $(empty_posdata.descriptor)")
+    dim = empty_posdata.dimension
+    N = empty_posdata.system_size
+    shots = empty_posdata.shots
 
-    max_misses = shots(empty_posdata)*fail_rate
-    for (i, ρ) in enumerate(ρs(empty_posdata))
-        sampler = geometry_from_density(geometry(empty_posdata), ρ, N, dim)
+    max_misses = shots*fail_rate
+    for (i, ρ) in enumerate(empty_posdata.ρs)
+        sampler = geometry_from_density(empty_posdata.geometry, ρ, N, dim)
         misses = 0
-        for j in 1:shots(empty_posdata)
+        for j in 1:shots
             positions = Vector{Vector{Float64}}()
             while length(positions) == 0 && misses < max_misses
                 try
@@ -70,5 +113,7 @@ function create_positions!(empty_posdata; fail_rate=0.3)
     end
     empty_posdata # now filled
 end
+
+SimLib.create(desc::PositionDataDescriptor) = create_positions!(PositionData(desc))
 
 end #module
