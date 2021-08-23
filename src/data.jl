@@ -14,6 +14,13 @@ SaveLocation(sl::SaveLocation) = sl
 
 Supertype for all `DataDescriptor`s.
 A `DataDescriptor` holds information about a set parameters that can be used to obtain the corresponding `Data`. Either by `load`ing or by `create`ing it.
+
+## Necessary methods to implement
+ - `_filename(descriptor)` - return something like "mydata/p1_p2_p3". The prefix/suffix/file ending will all be automatically added.
+ - `create(descriptor)` - Create the corresponding `Data` type and compute it's data. If additional data is needed use `load_or_create` to get it.
+
+## Optional methods
+ - `load_mydata(param1, param2,...)` - construct a Descriptor with the necessary fields and `load` it
 """
 abstract type AbstractDataDescriptor end
 
@@ -154,7 +161,7 @@ end
     load_or_create(descriptor[, savelocation]; dosave, prefix, suffix)
 
 First try to `load` the data. If the file is not present or its contents do not match the requirements of the `descriptor`
-then `create` the data. 
+then `create` the data.
 If `save` is true, also `save` the data (possibly overwriting what was there). Default: true
 """
 function load_or_create(desc::AbstractDataDescriptor, pathargs...; dosave=true, kwargs...)
