@@ -49,7 +49,7 @@ using XXZNumerics
 ## constants and ARGS
 const PREFIX = joinpath(path_prefix(), "cusp-zoom2-test")
 @show PREFIX
-const GEOMETRIES = :box_pbc
+const GEOMETRY = :box_pbc
 const DIM = 1
 const N = 15
 const ALPHA = 6
