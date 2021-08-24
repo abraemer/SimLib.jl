@@ -15,5 +15,5 @@ then
     exit
 fi
 
-exec julia --color=no --procs 48 --startup-file=no "slurm/zero_field/ed_zero_field.jl" box_pbc 1 16 $1
+exec julia --color=no --procs 48 --startup-file=no "slurm/zero_field/ed_zero_field.jl" noisy_chain_pbc 1 16 $1
 #exec julia --color=no --procs 4 --startup-file=no "slurm/zero_field/ed_zero_field.jl" noisy_chain_pbc 1 7 $1

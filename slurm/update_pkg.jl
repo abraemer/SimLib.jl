@@ -1,9 +1,9 @@
-#!/bin/sh 
-# ########## Begin Slurm header ########## 
-#SBATCH --nodes=1 
+#!/bin/sh
+# ########## Begin Slurm header ##########
+#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=00:15:00 
-#SBATCH --mem=1gb 
+#SBATCH --time=00:15:00
+#SBATCH --mem=1gb
 #SBATCH --job-name=update-pkg
 #SBATCH --output="logs/update-pkg-slurm-%j.out"
 ########### End Slurm header ##########
@@ -11,7 +11,7 @@
 # load modules
 # not needed - julia installed locally
 
-exec julia --color=no --threads=1 --startup-file=no "${BASH_SOURCE[0]}" "$@" 
+exec julia --color=no --threads=1 --startup-file=no "${BASH_SOURCE[0]}" "$@"
 =#
 println("PKG-UPDATE.slurm")
 
