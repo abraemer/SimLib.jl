@@ -75,7 +75,7 @@ logmsg("Starting!")
 
 @time begin
     ## DO STUFF
-    ensdd = EnsembleDataDescriptor(GEOMETRY, DIM, N, ALPHA, SHOTS, ρs, FIELDS, :ensembles, zbasis(N), location)
+    ensdd = EnsembleDataDescriptor(GEOMETRY, DIM, N, ALPHA, SHOTS, ρs, FIELDS, :ensembles, zbasis(N), LOCATION)
     logmsg("Computing $ensdd")
     save(create(ensdd); suffix="p_1")
     logmsg("Done!")
