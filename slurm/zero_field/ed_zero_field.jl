@@ -1,19 +1,3 @@
-#!/bin/sh
-# ########## Begin Slurm header ##########
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --time=12:00:00
-#SBATCH --mem=300gb
-#SBATCH --cpus-per-task=48
-#SBATCH --job-name=zero-field
-#SBATCH --output="logs/zero-field-%j.out"
-########### End Slurm header ##########
-#=
-# load modules
-# not needed - julia installed locally
-
-exec julia --color=no --procs 50 --startup-file=no "${BASH_SOURCE[0]}" "$@"
-=#
 println("zero_field.slurm")
 
 # check ARGS length and print usage if wrong

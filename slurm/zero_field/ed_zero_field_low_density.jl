@@ -1,19 +1,3 @@
-#!/bin/sh
-# ########## Begin Slurm header ##########
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --time=14:00:00
-#SBATCH --mem=350gb
-#SBATCH --cpus-per-task=48
-#SBATCH --job-name=zero-field-low
-#SBATCH --output="logs/zero-field-low-%j.out"
-########### End Slurm header ##########
-#=
-# load modules
-# not needed - julia installed locally
-
-exec julia --color=no --procs 48 --startup-file=no "${BASH_SOURCE[0]}" "$@"
-=#
 println("zero_field_low_density.slurm")
 
 # check ARGS length and print usage if wrong
