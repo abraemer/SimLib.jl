@@ -1,15 +1,16 @@
 module LSR
 
 import ..ED
+using ..Levels
 using ..SimLib
 using ..SimLib: FArray
-using XXZNumerics: basis_size
+using SpinSymmetry: basissize
 
 import Statistics
 using Printf: @sprintf
 import JLD2
 
-export levelspacingratio, LSRData, LSRDataDescriptor, center_region, load_lsr
+export levelspacingratio, LSRData, LSRDataDescriptor, center_region, load_lsr, LevelSpacingRatio
 
 ## Data structure
 
@@ -29,17 +30,12 @@ Carries the information to construct a [`EDDataDescriptor`](!ref) object.
 For `load`ing data only the first 4 fields are required.
 Can also be constructed from a `PositionDataDescriptor` by supplying a the missing bits (α, fields).
 """
-struct LSRDataDescriptor <: SimLib.AbstractDataDescriptor
+struct LSRDataDescriptor <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
 end
 
-LSRDataDescriptor(args...; kwargs...) = LSRDataDescriptor(ED.EDDataDescriptor(args...; kwargs...))
-LSRDataDescriptor(edata::ED.EDData) = LSRDataDescriptor(descriptor(edata))
+LSRDataDescriptor(args...; kwargs...) = LSRDataDescriptor(EDDataDescriptor(args...; kwargs...))
 
-# simply forward all properties
-Base.getproperty(lsrdd::LSRDataDescriptor, p::Symbol) = p == :derivedfrom ? getfield(lsrdd, :derivedfrom) : getproperty(getfield(lsrdd, :derivedfrom), p)
-
-Base.:(==)(d1::LSRDataDescriptor, d2::LSRDataDescriptor) = d1.derivedfrom == d2.derivedfrom
 
 """
     struct LSRData
@@ -59,45 +55,19 @@ The default save directory is "lsr".
 `Statistics.mean` and `Statistics.std` are overloaded to act on the first dimension to conveniently compute
 mean LSR and its variance.
 """
-struct LSRData <: SimLib.AbstractSimpleData
+struct LSRData <: ED.EDDerivedData
     descriptor::LSRDataDescriptor
     # [dummy, shot, h, rho]
     data::FArray{4}
 end
 
-LSRData(lsrdd::LSRDataDescriptor) = LSRData(lsrdd, FArray{4}(undef, basis_size(lsrdd.basis), lsrdd.shots, length(lsrdd.fields), length(lsrdd.ρs)))
-LSRData(eddata::ED.EDData; center=1.0) = LSRData(LSRDataDescriptor(eddata), levelspacingratio(eddata.evals; center))
-
-# forward properties to descriptor
-Base.getproperty(lsr::LSRData, s::Symbol) = hasfield(LSRData, s) ? getfield(lsr, s) : getproperty(lsr.descriptor, s)
-
+LSRData(lsrdd::LSRDataDescriptor) = LSRData(lsrdd, FArray{4}(undef, basissize(lsrdd.basis), lsrdd.shots, length(lsrdd.fields), length(lsrdd.ρs)))
 
 ## Saving/Loading
-DEFAULT_FOLDER = "lsr"
 
-SimLib._filename(desc::LSRDataDescriptor) = filename(desc.geometry, desc.dimension, desc.system_size, desc.α)
-filename(geometry, dim, N, α) = @sprintf("lsr/lsr_%s_%id_alpha_%.1f_N_%02i", geometry, dim, α, N)
+ED._default_folder(::LSRDataDescriptor) = "lsr"
 
 load_lsr(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(LSRDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
-
-function SimLib._convert_legacy_data(::Val{:lsrdata}, legacydata)
-    data = legacydata.data
-    desc = legacydata.descriptor
-    geom = desc.geometry
-    dim = desc.dim
-    N = desc.N
-    α = desc.α
-    shots = size(data, 1)
-    ρs = desc.ρs
-    fields = desc.fields
-
-    logmsg("[WARN]Unable to reconstruct parameters while loading LSR legacy data:")
-    logmsg("[WARN]  scale_fields, basis")
-
-    edd = EDDataDescriptor(geom, dim, N, α, shots, ρs, fields, missing, missing, SaveLocation(prefix=""))
-
-    LSRData(LSRDataDescriptor(edd), data)
-end
 
 function center_indices(L, center_region)
     cutoff = floor(Int, (L*(1-center_region)/2))
@@ -105,8 +75,6 @@ function center_indices(L, center_region)
 end
 
 center_region(lsr::LSRData, center) = @view lsr.data[center_indices(size(lsr.data, 1), center), :, :, :]
-
-levelspacingratio(eddata::ED.EDData; center=1.0) = LSRData(eddata; center)
 
 function levelspacingratio(levels; center=1.0)
     sizes = size(levels)
@@ -130,10 +98,35 @@ function levelspacingratio(levels; center=1.0)
 end
 
 function SimLib.create(lsrdd::LSRDataDescriptor)
-    eddata = SimLib.load_or_create(lsrdd.derivedfrom)
-    LSRData(eddata)
+    leveldata = SimLib.load_or_create(LevelDataDescriptor(lsrdd.derivedfrom))
+    LSRData(lsrdd, levelspacingratio(leveldata.data))
 end
 
 Statistics.mean(lsr::LSRData; center=1.0) = meandrop(center_region(lsr, center); dims=1)
 Statistics.std(lsr::LSRData; center=1.0) = stddrop(center_region(lsr, center); dims=1)
+
+
+mutable struct LSRTask <: ED.EDTask
+    data
+end
+
+LevelSpacingRatio() = LSRTask(nothing)
+
+function ED.initialize!(task::LSRTask, edd, arrayconstructor)
+    task.data = arrayconstructor(Float64, basissize(edd.basis)-2, length(edd.fields), edd.shots, length(edd.ρs))
+end
+
+function ED.compute_task!(task::LSRTask, ρindex, shot, fieldindex, eigen)
+    task.data[:, fieldindex, shot, ρindex] .= levelspacingratio(eigen.values)
+end
+
+function ED.failed_task!(task::LSRTask, ρindex, shot, fieldindex, eigen)
+    task.data[:, fieldindex, shot, ρindex] .= NaN64
+end
+
+function ED.assemble(task::LSRTask, edd)
+    LSRData(LSRDataDescriptor(edd), task.data)
+end
+
+
 end #module

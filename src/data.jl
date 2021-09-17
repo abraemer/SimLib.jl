@@ -31,13 +31,6 @@ Generate the middle part of the save location. A prefix will by prepended by `jo
 function _filename end
 
 """
-    _convert_legacy_data(Val(:oldname), legacydata)
-If data from before the Great Refactoring is loaded, this function will be used to convert it to a new and shiny `Data` object.
-The dispatch is on the key for the object used by `JLD2`, converted to a `Symbol`.
-"""
-function _convert_legacy_data end
-
-"""
     abstract AbstractData
 
 Supertype for simulation data. Subtypes consist of an appropriate `DataDescriptor` and the actual data.
@@ -107,11 +100,11 @@ save(data::AbstractData, args...; kwargs...) = save(data, datapath(data, args...
 function save(data::AbstractData, path::AbstractString)
     dname = dirname(path)
     if !isdir(dname)
-        logmsg("Save directory: $dname does not exists. Creating!")
+        logmsg("Save directory: $dname does not exist. Creating!")
         mkpath(dname)
     end
     logmsg("Saving file: $path")
-    JLD2.jldsave(path; data)
+    JLD2.jldsave(path; data, version="0.3")
 end
 
 
@@ -140,18 +133,12 @@ function load(path::AbstractString; throwerror=true)
         end
     end
     data = JLD2.load(path)
-    if haskey(data, "data")
-        data["data"]
-    else
-        # legacy file # try converting
-        logmsg("Found legacy data. Some parameters might not be accurately loaded!")
-        name, entry = first(data)
-        # TODO could do something smart to figure out suffix/prefix maybe
-        # however I don't think I will load and just save a file back...
-        # Maybe if I use load_or_create and it loads, and then I try to save that...
-        # This case is now accounted for but only when loading via a descriptor, which should be the generic case
-        _convert_legacy_data(Val(Symbol(name)), entry)
+    if !haskey(data, "version")
+        error("File too old. Try version 0.2 to load")
+    elseif data["version"] != "0.3"
+        error("File too old. Try version $(data["version"]) to load")
     end
+    return data["data"]
 end
 
 

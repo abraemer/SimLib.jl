@@ -30,7 +30,7 @@ struct PositionDataDescriptor <: SimLib.AbstractDataDescriptor
     pathdata::SaveLocation
     function PositionDataDescriptor(geom, dimension, system_size, shots, ρs, pathdata::SaveLocation)
         geom ∈ SimLib.GEOMETRIES || error("Unknown geometry: $geom")
-        new(geom, dimension, system_size, shots, ismissing(ρs) ? missing : unique!(sort(vec(ρs))), pathdata)
+        new(geom, dimension, system_size, shots, ismissing(ρs) ? missing : unique!(sort(collect(ρs))), pathdata)
     end
 end
 
@@ -69,18 +69,6 @@ end
 
 PositionData(desc::PositionDataDescriptor) = PositionData(desc, zeros(Float64, desc.dimension, desc.system_size, desc.shots, length(desc.ρs)))
 PositionData(args...; kwargs...) = PositionData(PositionDataDescriptor(args..., kwargs...))
-
-function SimLib._convert_legacy_data(::Val{:posdata}, legacydata)
-    data = legacydata.coords
-    dim, N, shots, _ = size(data)
-    ρs = legacydata.ρs
-    geom = legacydata.geometry
-
-    savelocation = SaveLocation(prefix="")
-    desc = PositionDataDescriptor(geom, dim, N, shots, ρs, savelocation)
-
-    PositionData(desc, data)
-end
 
 ## main function
 function create_positions!(empty_posdata; fail_rate=0.3)

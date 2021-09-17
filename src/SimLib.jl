@@ -3,6 +3,7 @@ module SimLib
 using Dates
 import JLD2
 using LinearAlgebra
+using Reexport
 using Statistics
 using XXZNumerics
 
@@ -17,22 +18,21 @@ const Maybe{T} = Union{Missing, T} where T
 include("general.jl")
 include("data.jl")
 include("positions.jl")
-include("ed.jl")
+include("ed/ed.jl")
+include("eigenstate_occupation.jl")
+include("levels.jl")
+include("operator_diagonal.jl")
 include("ensembles.jl")
-include("lsr.jl")
+include("levelspacingratio.jl")
 
 #TODO use @reexport to simplify
 
-using .Positions
-export Positions, PositionDataDescriptor, PositionData, load_positions
-
-using .ED
-export ED, EDDataDescriptor, EDData, run_ed, load_ed
-
-using .Ensembles
-export Ensembles, EnsembleDataDescriptor, EnsembleData, ENSEMBLE_INDICES, ensemble_predictions, load_ensemble
-
-using .LSR
-export LSR, LSRDataDescriptor, LSRData, levelspacingratio, center_region, load_lsr
+@reexport using .Positions
+@reexport using .ED
+@reexport using .Levels
+@reexport using .EON
+@reexport using .OPDiag
+@reexport using .LSR
+@reexport using .Ensembles
 
 end
