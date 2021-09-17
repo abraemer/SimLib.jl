@@ -5,7 +5,7 @@ end
 
 function path_prefix()
     try
-        abspath(joinpath(readchomp(`ws_find cusp`), "julia"))
+        abspath(joinpath(readchomp(`ws_find xxztherm`), "julia"))
     catch e
         abspath(joinpath(pwd(), "data"))
     end
