@@ -1,7 +1,7 @@
 name = "SimLib"
 uuid = "d0a720f3-e115-4687-947d-90041a62db49"
 authors = ["Adrian Braemer <11058200+abraemer@users.noreply.github.com> and contributors"]
-version = "0.3.0"
+version = "0.4.0"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"

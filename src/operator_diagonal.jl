@@ -31,7 +31,7 @@ end
 ED._default_folder(::OPDiagDataDescriptor) = "opdiag"
 ED._filename_addition(opdd::OPDiagDataDescriptor) = "_" * opdd.opname
 
-load_opdiag(geometry, dimension, system_size, α, opname, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(OPDiagData(opname, geometry, dimension, system_size, α; prefix, suffix))
+load_opdiag(geometry, dimension, system_size, α, opname, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(OPDiagDataDescriptor(opname, geometry, dimension, system_size, α; prefix, suffix))
 
 ### Task
 
@@ -46,27 +46,27 @@ OperatorDiagonal(opname, operator) = OPDiagTask{Val(ishermitian(operator)), type
 const HermitianOPDiagTask = OPDiagTask{Val(true)}
 
 function ED.initialize!(task::OPDiagTask, edd, arrayconstructor)
-    task.data = arrayconstructor(ComplexF64, basissize(edd.basis), length(edd.fields), edd.shots, length(edd.ρs))
+    task.data = arrayconstructor(ComplexF64, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
 function ED.initialize!(task::HermitianOPDiagTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, basissize(edd.basis), length(edd.fields), edd.shots, length(edd.ρs))
+    task.data = arrayconstructor(Float64, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
 function ED.compute_task!(task::HermitianOPDiagTask, ρindex, shot, fieldindex, eigen)
     for (i, vec) in enumerate(eachcol(eigen.vectors))
-        task.data[i, fieldindex, shot, ρindex] = real(dot(vec, task.op, vec))
+        task.data[i, shot, fieldindex, ρindex] = real(dot(vec, task.op, vec))
     end
 end
 
 function ED.compute_task!(task::OPDiagTask, ρindex, shot, fieldindex, eigen)
     for (i, vec) in enumerate(eachcol(eigen.vectors))
-        task.data[i, fieldindex, shot, ρindex] = dot(vec, task.op, vec)
+        task.data[i, shot, fieldindex, ρindex] = dot(vec, task.op, vec)
     end
 end
 
 function ED.failed_task!(task::OPDiagTask, ρindex, shot, fieldindex)
-    task.data[:, fieldindex, shot, ρindex] .= NaN64
+    task.data[:, shot, fieldindex, ρindex] .= NaN64
 end
 
 function ED.assemble(task::OPDiagTask, edd)

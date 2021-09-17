@@ -41,15 +41,15 @@ end
 Energies() = LevelTask(nothing)
 
 function ED.initialize!(task::LevelTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, basissize(edd.basis), length(edd.fields), edd.shots, length(edd.ρs))
+    task.data = arrayconstructor(Float64, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
 function ED.compute_task!(task::LevelTask, ρindex, shot, fieldindex, eigen)
-    task.data[:, fieldindex, shot, ρindex] .= eigen.values
+    task.data[:, shot, fieldindex, ρindex] .= eigen.values
 end
 
 function ED.failed_task!(task::LevelTask, ρindex, shot, fieldindex)
-    task.data[:, fieldindex, shot, ρindex] .= NaN64
+    task.data[:, shot, fieldindex, ρindex] .= NaN64
 end
 
 function ED.assemble(task::LevelTask, edd)

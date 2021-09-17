@@ -15,9 +15,10 @@
     evaltask = Energies()
     eontask = eontask = EigenstateOccupation("xpol", symmetrize_state(normalize!(ones(2^7)), basis))
     eevtask = OperatorDiagonal("xmag", symmetrize_operator(sum(op_list(σx/2, 7))/7, basis))
+    eltask = EigenstateLocality("sz", symmetrize_operator(single_spin_op(σz, 1, 7), basis))
     lsrtask = LevelSpacingRatio()
 
-    tasks = [evaltask, eontask, eevtask, lsrtask]
+    tasks = [evaltask, eontask, eevtask, lsrtask, eltask]
 
     ### THREADED RUN
     # remove processes to run threaded
@@ -58,5 +59,11 @@
     ## check values
     for (data1, data2) in zip(edata1, edata2)
         @test data1.data ≈ data1.data
+    end
+
+    for task in tasks
+        ED.initialize!(task, edd1, ED._array_constructor)
+        t = ED.initialize_local(task)
+        ED.failed_task!(t, 1, 1, 1)
     end
 end

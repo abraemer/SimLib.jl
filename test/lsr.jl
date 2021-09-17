@@ -11,7 +11,7 @@
     edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, basis; suffix="threaded")
     lsrdd = LSRDataDescriptor(edd)
 
-    lsrdata = load_or_create(lsrdd, location) # should load the ED data since previous test saved it
+    lsrdata = load_or_create(lsrdd) # should load the ED data since previous test saved it
 
     ## No idea for good test
     # check access of ensembles ?

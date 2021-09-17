@@ -98,7 +98,7 @@ function levelspacingratio(levels; center=1.0)
 end
 
 function SimLib.create(lsrdd::LSRDataDescriptor)
-    leveldata = SimLib.load_or_create(LevelDataDescriptor(lsrdd.derivedfrom))
+    leveldata = load_or_create(LevelDataDescriptor(lsrdd.derivedfrom))
     LSRData(lsrdd, levelspacingratio(leveldata.data))
 end
 
@@ -113,15 +113,15 @@ end
 LevelSpacingRatio() = LSRTask(nothing)
 
 function ED.initialize!(task::LSRTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, basissize(edd.basis)-2, length(edd.fields), edd.shots, length(edd.ρs))
+    task.data = arrayconstructor(Float64, basissize(edd.basis)-2, edd.shots, length(edd.fields), length(edd.ρs))
 end
 
 function ED.compute_task!(task::LSRTask, ρindex, shot, fieldindex, eigen)
-    task.data[:, fieldindex, shot, ρindex] .= levelspacingratio(eigen.values)
+    task.data[:, shot, fieldindex, ρindex] .= levelspacingratio(eigen.values)
 end
 
-function ED.failed_task!(task::LSRTask, ρindex, shot, fieldindex, eigen)
-    task.data[:, fieldindex, shot, ρindex] .= NaN64
+function ED.failed_task!(task::LSRTask, ρindex, shot, fieldindex)
+    task.data[:, shot, fieldindex, ρindex] .= NaN64
 end
 
 function ED.assemble(task::LSRTask, edd)

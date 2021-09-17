@@ -20,6 +20,7 @@ include("data.jl")
 include("positions.jl")
 include("ed/ed.jl")
 include("eigenstate_occupation.jl")
+include("eigenstate_locality.jl")
 include("levels.jl")
 include("operator_diagonal.jl")
 include("ensembles.jl")
@@ -33,6 +34,7 @@ include("levelspacingratio.jl")
 @reexport using .EON
 @reexport using .OPDiag
 @reexport using .LSR
+@reexport using .EL
 @reexport using .Ensembles
 
 end
