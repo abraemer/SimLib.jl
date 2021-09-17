@@ -1,39 +1,62 @@
 @testset "ed.jl" begin
 
+    using LinearAlgebra: normalize!
+    using SpinSymmetry
+
     print("\n\n ####### ed.jl #######\n\n")
 
+    ### positiondata setup
     location = SaveLocation(;prefix=PREFIX)
-
     pdd = PositionDataDescriptor(:box, 1, 7, 20, [0.1, 0.2], location)
-    edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, SpinFlip(zbasis(6)))
+    posdata = load_or_create(pdd)
+    basis = symmetrized_basis(7, Flip(7), 0)
 
-    @test edd.pathdata.prefix == location.prefix
+    ### tasks
+    evaltask = Energies()
+    eontask = eontask = EigenstateOccupation("xpol", symmetrize_state(normalize!(ones(2^7)), basis))
+    eevtask = OperatorDiagonal("xmag", symmetrize_operator(sum(op_list(σx/2, 7))/7, basis))
+    lsrtask = LevelSpacingRatio()
 
-    # test threaded
+    tasks = [evaltask, eontask, eevtask, lsrtask]
+
+    ### THREADED RUN
+    # remove processes to run threaded
     workers() != [1] && rmprocs(workers())
+
+    edd1 = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, basis; suffix="threaded")
+
+    @test edd1.pathdata.prefix == location.prefix
+
     log1 = joinpath(PREFIX, "ed_threaded.log")
     edata1 = to_file(log1) do
-        load_or_create(edd; dosave=false) # also creates the positions file
+        run_ed(edd1, posdata, tasks)
     end
-    @test isfile(datapath(pdd))
+    save.(edata1)
+    for data in edata1
+        @test isfile(datapath(data))
+    end
     @test log_contains(log1, "THREADS")
 
-    # test multi-process
+    ### MULTIPROCESS RUN
     addprocs(4)
     @everywhere import Pkg
     @everywhere Pkg.activate("..")
     @everywhere using SimLib
+
+    edd2 = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, basis; suffix="procs")
+
     log2 = joinpath(PREFIX, "ed_processes.log")
     edata2 = to_file(log2) do
-        load_or_create(edd) # this reads the position file
+        run_ed(edd2, posdata, tasks) # this reads the position file
+    end
+    save.(edata2)
+    for data in edata2
+        @test isfile(datapath(data))
     end
     @test log_contains(log2, "PROCESSES")
 
-    @test edata1.eev ≈ edata2.eev
-    @test edata1.evals ≈ edata2.evals
-    @test edata1.eon ≈ edata2.eon
-
-    save(edata1) # for next test
-    @test load_ed(:box, 1, 7, 6; prefix=PREFIX) !== nothing
-
+    ## check values
+    for (data1, data2) in zip(edata1, edata2)
+        @test data1.data ≈ data1.data
+    end
 end

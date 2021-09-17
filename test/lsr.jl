@@ -7,10 +7,11 @@
     location = SaveLocation(;prefix=PREFIX)
 
     pdd = PositionDataDescriptor(:box, 1, 7, 20, [0.1, 0.2], location)
-    edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, SpinFlip(zbasis(6)))
+    basis = symmetrized_basis(7, Flip(7), 0)
+    edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, basis; suffix="threaded")
     lsrdd = LSRDataDescriptor(edd)
 
-    lsrdata = SimLib.load_or_create(lsrdd) # should load the ED data since previous test saved it
+    lsrdata = load_or_create(lsrdd, location) # should load the ED data since previous test saved it
 
     ## No idea for good test
     # check access of ensembles ?
@@ -19,6 +20,7 @@
     # check attribute forwarding
     @test lsrdd.fields == edd.fields
 
-    lsrdata2 = load_lsr(:box, 1, 7, 6; prefix=PREFIX)
+    lsrdata2 = load_lsr(:box, 1, 7, 6, location; suffix="threaded")
     @test lsrdata2.descriptor == lsrdata.descriptor
+    @test lsrdata2.data ≈ lsrdata.data
 end
