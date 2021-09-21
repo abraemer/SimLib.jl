@@ -43,7 +43,7 @@ function eigenstatelocality!(res, eigen, operator)
     energies = [eva + real(dot(eve, operator, eve)) for (eva, eve) in zip(evals, eachcol(evecs))]
     order = sortperm(energies)
     for (i, (index, nextindex)) in enumerate(zip(order[1:end-1], order[2:end]))
-        res[i] = log(abs(dot(evecs[:, index], operator, evecs[:, nextindex])) / (energies[nextindex] - energies[index]))
+        res[i] = log(abs(dot(view(evecs, :, index), operator, view(evecs, :, nextindex))) / (energies[nextindex] - energies[index]))
     end
     res
 end
