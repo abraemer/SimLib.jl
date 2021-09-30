@@ -1,12 +1,22 @@
 # SimLib
 
-This package contains the scripts to actually run the simulations. It does not contain some tests that just try to run the most basic functionality with some parameters (chosen for short runtime).
+This package contains all the ingredients to run simulations of disordered spin systems. 
 
-## File Structure
+## Basic concept
+Each step of the simulation (with the exception of `ED`) has two types associated with it: A `Descriptor` holding all relevant parameters and a `Data` type which contains the descriptor and the computed values. Usually the workflows look like this: You initialize a `Descriptor` with the parameters of interest and either `create` or `load` the corresponding `Data` (depending  on whether you ran the simulation already or not). When `creat`ing new results, the code will try to `load` required data for the computation (f.e. the ensemble computation need eigenstate occupation, operator diagonal and eigenenergy data) if you did not pass in data explicitely.
 
-- `src/` contains different components that may be reused. Basically the core of every step of the simulation is written as a small module providing the possibility to save/load/compute the dataset it's responsible for.
-- Files in `slurm/` maybe run directly (or given to `sbatch`) to perform an action.
-- `test/` has the basic test scripts.
+Note: It's not really possible to pass additional data to `create`. Right now there are (sometimes) specific methods (i.e. `ensemble_predictions`) for the given computation, but `create` never accepts additional arguments. This should probably be changed to unify the interface of the computational tasks.
 
-## Code
-The main idea is, that each type of data that interests me has its own `Data` type. These types consist of some arrays to store the values and a `Descriptor` that holds the parameters for obtaining the data (and then some more helpful stuff). The `Descriptor` is responsible to know where to `save` to/`load` from and how to `create` the `Data` in the first place. This design let's one to specify the data one wants with all necessary parameters and then just call `create` it. Intermediate `Data` used for computation will be automatically `load_or_created` and also saved. Loading data is simplified as not all parameters are important to know the save location.
+## Exact diagonalization
+There is an exception with computations that require Exact Diagonalization. It is a lot more efficient to bundle computations s.t. you only perform the diagonalization once and reuse it for different quantities of interest. To facilitate this, you can specify the parameters once (using `EDDataDescriptor`) and then call `run_ed` with a list of `Task`s to fulfill. This results in a list of `Data` structs - one for each task.
+
+## Saving/Loading
+Every descriptor has a `SaveLocation` to control where the data should be saved to/loaded from and knows how to generate a good file from it's values. The `SaveLocation(prefix, suffix)` denotes the path `prefix/<descriptor-specific-name>_suffix.jld2`. Derived (or otherwise related) data also keep that information. 
+
+All methods dealing with file operations take also `prefix`, `suffix` keywords which take precendence over the `SaveLocation` of the `Descriptor` at hand.
+
+## Tests
+There are also some very basic tests around, running all simulation steps for some small parameters, and some notebooks to visualize raw data (useful for finding bugs).
+
+## Example
+For a small example showcasing a simulation script, see `notebooks/generate_test_data.jl` (which actually not a `Pluto.jl` notebook and probably should be in a different place).

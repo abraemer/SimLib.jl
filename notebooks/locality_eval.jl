@@ -46,7 +46,7 @@ Density: $(@bind rhoIndex Slider(1:length(eldata.ρs)))
 # ╔═╡ 89ffd707-e5ef-485f-ba47-db07e3caa6f2
 let p = plot(;legend=nothing, 
 		title="ρ=$(eldata.ρs[rhoIndex]), h=$(eldata.fields[fieldIndex])")
-	histogram!(p, vec(eldata[:,:,fieldIndex,rhoIndex]); bins=40)
+	histogram!(p, vec(eldata.data[30:end-30,:,fieldIndex,rhoIndex]); bins=40)
 end
 
 # ╔═╡ eacbb47c-b86f-448c-b072-95e775f94e22
