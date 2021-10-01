@@ -3,13 +3,15 @@ function logmsg(msg...; doflush=true)
     doflush && flush(stdout)
 end
 
-function path_prefix()
+function path_prefix(workspace)
     try
-        abspath(joinpath(readchomp(`ws_find xxztherm`), "julia"))
+        abspath(joinpath(readchomp(`ws_find $workspace`)))
     catch e
-        abspath(joinpath(pwd(), "data"))
+        path_prefix()
     end
 end
+
+path_prefix() = abspath(joinpath(pwd(), "data"))
 
 
 const GEOMETRIES = [:box, :box_pbc, :noisy_chain, :noisy_chain_pbc]
