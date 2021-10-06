@@ -96,6 +96,11 @@ function create_positions!(empty_posdata; fail_rate=0.3)
             if misses >= max_misses
                 error("sampler $sampler did fail to converge too often (fail rate $(round(fail_rate*100; digits=1))%! Current ρ=$ρ, dim=$dim, shot=$j, N=$N")
             end
+            if dim == 1
+                # for spin chains, sorting the positions is very helpful!
+                # it enables f.e. easier computation of half-chain entropy, tracing out subsystems...
+                positions = sort!(positions)
+            end
             empty_posdata[:,:,j,i] = hcat(positions...)
         end
     end
