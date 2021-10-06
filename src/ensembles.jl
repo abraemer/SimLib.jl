@@ -99,6 +99,15 @@ function _microcan!(out, eon, eev, evals)
     # out[i,j,k] = microcanonical_weights*eev[a,i,j,k]
     @views for I in CartesianIndices(out)
         E_0 = dot(eon[:, I], evals[:, I])
+        if E_0 < evals[1,I] || E_0 > evals[end,I] || !issorted(evals[1,I])
+            logmsg("Something off for index $I")
+            @show issorted(evals[:,I])
+            @show norm(sort(evals[:, I]) - evals[:, I])
+            @show E_0, evals[1,I], evals[end,I], minimum(evals[:,I]), maximum(evals[:,I])
+            @show eltype(eon)
+            @show sum(eon[:, I])
+            println()
+        end
         occ = microcanonical_ensemble(evals[:, I], E_0)
         out[I] = dot(occ, eev[:, I])
     end
@@ -122,6 +131,7 @@ end
 function ensemble_predictions!(ensemble_data, evals, eon, eev)
     if !(eltype(evals) isa Real)
         eon = abs2.(eon)
+        logmsg("Ensemble prediction: Got amplitudes -> squaring.")
     end
     _microcan!( @view(ensemble_data[:,:,:,1]), eon, eev, evals)
     _canonical!(@view(ensemble_data[:,:,:,2]), eon, eev, evals)
