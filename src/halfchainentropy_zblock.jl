@@ -33,7 +33,7 @@ struct HCEData <: ED.EDDerivedData
 end
 
 ED._default_folder(::HCEDataDescriptor) = "entropy"
-_filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm ? "_symm" : "")
+ED._filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm ? "_symm" : "")
 
 load_entropy(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(HCEDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
 
