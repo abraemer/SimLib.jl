@@ -25,8 +25,7 @@ include("levels.jl")
 include("operator_diagonal.jl")
 include("ensembles.jl")
 include("levelspacingratio.jl")
-
-#TODO use @reexport to simplify
+include("halfchainentropy_zblock.jl")
 
 @reexport using .Positions
 @reexport using .ED
@@ -36,5 +35,6 @@ include("levelspacingratio.jl")
 @reexport using .LSR
 @reexport using .EL
 @reexport using .Ensembles
+@reexport using .HCE_ZBlock_Module
 
 end
