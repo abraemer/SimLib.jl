@@ -3,7 +3,7 @@ module HCE_ZBlock_Module
 import ..ED
 using ..SimLib
 using ..SimLib: FArray, Maybe
-using LinearAlgebra: eigvals!, Hermitian, mul!
+using LinearAlgebra: eigvals!, Hermitian, mul!, svdvals!
 using SharedArrays: sdata
 using SpinSymmetry
 using XXZNumerics: entropy
@@ -65,7 +65,9 @@ struct SymmZBlockEntanglementEntropy
     kfull::Int
     N1::Int
     indexLookup::Vector{Int}## ToDo: is that a sensible data structure?
-    allinds::Vector{Matrix{Int64}}
+    #allinds::Vector{Matrix{Int64}}
+    indsA::Vector{Vector{Int}} # note that indsA contains fewer indices
+    indsB::Vector{Vector{Int}}
     #krange::UnitRange{Int}
     size::Int
     function SymmZBlockEntanglementEntropy(zblockbasis, N1)
@@ -77,9 +79,10 @@ struct SymmZBlockEntanglementEntropy
         indexLookup = zeros(2^N)
         indexLookup[_zblock_inds(N, k)] = 1:binomial(N,k)
         krange = max(0,N1+k-N):min(N1, k)
-        allinds = [2^N1 .* (_zblock_inds(N-N1, k-ki) .- 1) .+ _zblock_inds(N1, ki)' for ki in krange]
+        indsA = [2^N1 .* (_zblock_inds(N-N1, k-ki) .- 1) for ki in krange]
+        indsB = [_zblock_inds(N1, ki) .- 1 for ki in krange]
         size = 2*N1 == N ? N1 : N
-        new(N, k, N1, indexLookup, allinds, size)
+        new(N, k, N1, indexLookup, indsA, indsB, size)
     end
 end
 
@@ -90,22 +93,27 @@ entanglement_entropy(s::SymmZBlockEntanglementEntropy, ψ) = entanglement_entrop
 
 function entanglement_entropy!(out, s::SymmZBlockEntanglementEntropy, ψ)
     NB = s.Nfull
-    for indmat in s.allinds
-        l = size(indmat, 1)
-		temp = zeros(eltype(ψ), l, l)
-		vals = zeros(eltype(ψ), l)
+    #for indmat in s.allinds
+    for (indA, indB) in zip(s.indsA, s.indsB)
+        # indsA is shorter! -> take as column
+        # l = size(indmat, 1)
+		# temp = zeros(eltype(ψ), l, l)
+		# vals = zeros(eltype(ψ), l)
+        mat = Matrix{eltype(ψ)}(undef, length(indA), length(indB))
         for shift in 1:s.size
-            fill!(temp, 0)
-            for inds in eachcol(indmat)
-                #vals .= getindex.(Ref(ψ), getindex.(Ref(s.indexLookup), SpinSymmetry._roll_bits.(NB, inds .- 1, shift-1) .+ 1))
-                for i in 1:l
-                    vals[i] = ψ[s.indexLookup[SpinSymmetry._roll_bits(NB, inds[i]-1, shift-1)+1]]
-                end
-                #temp += vals * vals'
-                temp = mul!(temp, vals, vals', 1, 1) # compute temp += vals * vals'
-            end
+            # fill!(temp, 0)
+            # for inds in eachcol(indmat)
+            #     #vals .= getindex.(Ref(ψ), getindex.(Ref(s.indexLookup), SpinSymmetry._roll_bits.(NB, inds .- 1, shift-1) .+ 1))
+            #     for i in 1:l
+            #         vals[i] = ψ[s.indexLookup[SpinSymmetry._roll_bits(NB, inds[i]-1, shift-1)+1]]
+            #     end
+            #     #temp += vals * vals'
+            #     temp = mul!(temp, vals, vals', 1, 1) # compute temp += vals * vals'
+            # end
             #println("diag $(size(temp))")
-            out[shift] += entropy(eigvals!(Hermitian(temp)))
+            # out[shift] += entropy(eigvals!(Hermitian(temp)))
+            mat .= getindex.(Ref(ψ), getindex.(Ref(s.indexLookup), SpinSymmetry._roll_bits.(NB, indA .+ indB', shift-1) .+ 1))
+            out[shift] += entropy(svdvals!(mat) .^ 2)
 		end
 	end
     out
