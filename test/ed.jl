@@ -17,8 +17,9 @@
     eevtask = OperatorDiagonal("xmag", symmetrize_operator(sum(op_list(σx/2, 7))/7, basis))
     eltask = EigenstateLocality("sz", symmetrize_operator(single_spin_op(σz, 1, 7), basis))
     lsrtask = LevelSpacingRatio()
+    #entropytask = HalfChainEntropy()
 
-    tasks = [evaltask, eontask, eevtask, lsrtask, eltask]
+    tasks = [evaltask, eontask, eevtask, lsrtask, eltask]#, entropytask]
 
     ### THREADED RUN
     # remove processes to run threaded
@@ -29,9 +30,11 @@
     @test edd1.pathdata.prefix == location.prefix
 
     log1 = joinpath(PREFIX, "ed_threaded.log")
+    SimLib.ED.reset_stats()
     edata1 = to_file(log1) do
         run_ed(edd1, posdata, tasks)
     end
+    SimLib.ED.show_stats()
     save.(edata1)
     for data in edata1
         @test isfile(datapath(data))
@@ -47,9 +50,11 @@
     edd2 = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, basis; suffix="procs")
 
     log2 = joinpath(PREFIX, "ed_processes.log")
+    SimLib.ED.reset_stats()
     edata2 = to_file(log2) do
         run_ed(edd2, posdata, tasks) # this reads the position file
     end
+    SimLib.ED.show_stats()
     save.(edata2)
     for data in edata2
         @test isfile(datapath(data))

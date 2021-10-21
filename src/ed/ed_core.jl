@@ -83,7 +83,7 @@ function _workload_chunks(total, nchunks)
     [(splits[i]+1):splits[i+1] for i in 1:nchunks]
 end
 
-function _compute_parallel!(tasks, edd, posdata)
+function _compute_parallel!(tasks, edd, posdata, timer)
     N = edd.system_size
     nshots = edd.shots
     nρs = length(edd.ρs)
@@ -95,14 +95,18 @@ function _compute_parallel!(tasks, edd, posdata)
     _compute_interactions!(interactions, edd, posdata)
 
     workloads = _workload_chunks(nshots*nρs, length(procs(interactions)))
+    subtimers = [TimerOutput() for _ in 1:length(workloads)]
 
-    @sync for (i, p) in enumerate(procs(interactions))
-        @async remotecall_wait(_compute_parallel_job!, p,
-            tasks, interactions, workloads[i], edd)
+    @timeit timer "compute_parallel" @sync for (i, p) in enumerate(procs(interactions))
+        @async subtimers[i] = remotecall_fetch(_compute_parallel_job!, p,
+            tasks, interactions, workloads[i], edd, subtimers[i])
+    end
+    for subtimer in subtimers
+        merge!(timer, subtimer; tree_point=["compute_parallel"])
     end
 end
 
-function _compute_parallel_job!(tasks, interactions, workload, desc)
+function _compute_parallel_job!(tasks, interactions, workload, desc, timer)
     # build operators and initial state here
     # -> is it worth to just to this once and use SharedArrays?
     # probably not much of a difference as the opjects here are quite small in RAM
@@ -112,10 +116,11 @@ function _compute_parallel_job!(tasks, interactions, workload, desc)
     tasks = initialize_local.(tasks)
 
     logmsg("Range: $(workload) on #$(indexpids(interactions))")
-    _compute_core!(tasks, interactions, workload, desc.fields, field_operator, desc.basis)
+    _compute_core!(tasks, interactions, workload, desc.fields, field_operator, desc.basis, timer)
+    timer
 end
 
-function _compute_threaded!(tasks, edd, posdata)
+function _compute_threaded!(tasks, edd, posdata, timer)
     N = edd.system_size
     nshots = edd.shots
     nρs = length(edd.ρs)
@@ -131,26 +136,32 @@ function _compute_threaded!(tasks, edd, posdata)
 
     # use one thread less as the main thread should not be used for work (I think)
     workers = max(1, Threads.nthreads()-1)
+    subtimers = [TimerOutput() for _ in 1:workers]
     workloads = _workload_chunks(nshots*nρs, workers)
-    @sync for i in 1:workers
-        Threads.@spawn _compute_core!(tasks, interactions, workloads[i], edd.fields, field_operator, edd.basis)
+    @timeit timer "compute_threaded" @sync for i in 1:workers
+        Threads.@spawn _compute_core!(tasks, interactions, workloads[i], edd.fields, field_operator, edd.basis, subtimers[i])
+    end
+    for subtimer in subtimers
+        merge!(timer, subtimer; tree_point=["compute_threaded"])
     end
 end
 
-function _compute_core!(tasks, interactions, workload, field_values, field_operator, symmetry)
+function _compute_core!(tasks, interactions, workload, field_values, field_operator, symmetry, timer)
     tasks = initialize_local.(tasks)
     nshots = size(interactions, 3)
     matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate, but DENSE
-    for index in workload
+    @timeit timer "workload" for index in workload
         i, shot = _flat_to_indices(index, nshots)
         J = @view interactions[:,:, shot, i]
-        model = real.(symmetrize_operator(xxzmodel(J, -0.73), symmetry))
+        @timeit timer "make H" model = real.(symmetrize_operator(xxzmodel(J, -0.73), symmetry))
 
-        for (k, h) in enumerate(field_values)
-            copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
+        @timeit timer "field loop" for (k, h) in enumerate(field_values)
+            @timeit timer "copyto!" copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
             try
-                eigen = eigen!(Hermitian(matrix))
-                compute_task!.(tasks, i, shot, k, Ref(eigen))
+                @timeit timer "eigen!" eigen = eigen!(Hermitian(matrix))
+                for task in tasks
+                    @timeit timer summary(task) compute_task!(task, i, shot, k, eigen)
+                end
             catch e;
                 logmsg("Error occured for #field=$k shot=$shot #rho=$i: $e")
                 display(stacktrace(catch_backtrace()))
@@ -200,10 +211,10 @@ function run_ed(desc::EDDataDescriptor, posdata::PositionData, tasks::Vector{EDT
     wcount = length(workers())
     if wcount > 1
         logmsg("Running ED on $(wcount) PROCESSES")
-        _compute_parallel!(tasks, desc, posdata)
+        _compute_parallel!(tasks, desc, posdata, get_stats())
     else
         logmsg("Running ED on $(Threads.nthreads()) THREADS")
-        _compute_threaded!(tasks, desc, posdata)
+        _compute_threaded!(tasks, desc, posdata, get_stats())
     end
     return assemble.(tasks, Ref(desc))
 end
