@@ -10,6 +10,7 @@
     ensdd = EnsembleDataDescriptor(edd)
 
     ensdata = load_or_create(ensdd, location) # should load the ED data since previous test saved it, and save to file without suffix
+    save(ensdata)
 
     ensdata2 = load_ensemble(:box, 1, 7, 6, location) # load previously generated data
     ## No idea for good test
