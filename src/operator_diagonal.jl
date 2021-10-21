@@ -73,4 +73,6 @@ function ED.assemble(task::OPDiagTask, edd)
     OPDiagData(OPDiagDataDescriptor(task.op, task.opname, edd), sdata(task.data))
 end
 
+Base.summary(task::OPDiagTask) = string(typeof(task)) * "($(task.opname))"
+
 end #module

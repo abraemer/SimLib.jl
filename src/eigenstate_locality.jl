@@ -76,4 +76,6 @@ function ED.assemble(task::ELTask, edd)
     ELData(ELDataDescriptor(task.operator, task.operatorname, edd), sdata(task.data))
 end
 
+Base.summary(task::ELTask) = string(typeof(task)) * "($(task.operatorname))"
+
 end #module

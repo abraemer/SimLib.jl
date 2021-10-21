@@ -62,4 +62,6 @@ function ED.assemble(task::EONTask, edd)
     EONData(EONDataDescriptor(task.state, task.statename, edd), sdata(task.data))
 end
 
+Base.summary(task::EONTask) = string(typeof(task)) * "($(task.statename))"
+
 end #module

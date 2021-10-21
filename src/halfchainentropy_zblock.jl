@@ -38,25 +38,7 @@ ED._filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm 
 load_entropy(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(HCEDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
 
 
-function entanglement_entropy_zblock(state, N, kB, N1)
-	(N == N1 || N1 == 0) && return 0
-	(N == k  ||  k == 0) && return 0
-	reducedρ = []
-	for k in reverse(0:min(N1,kB))
-		let b1 = SpinSymmetry._indices(ZBlockBasis(N1,k)),
-			b2 = 2^N1 * (SpinSymmetry._indices(ZBlockBasis(NB-N1, kB-k)) .- 1),
-			temp = zeros(eltype(ψsymm), length(b2), length(b2))
-			for indA in b1
-				fullBasisInds = indA .+ b2
-				symmBasisInds = indexLookup[fullBasisInds]
-				vals = state[symmBasisInds]
-				temp += vals * vals'
-			end
-			push!(reducedρ, temp)
-		end
-	end
-	entropy(vcat(eigvals!.(reducedρ)...))
-end
+## Functions
 
 _zblock_inds(N, k) = SpinSymmetry._indices(zbasis(N, k))
 
@@ -65,17 +47,13 @@ struct SymmZBlockEntanglementEntropy
     kfull::Int
     N1::Int
     indexLookup::Vector{Int}## ToDo: is that a sensible data structure?
-    #allinds::Vector{Matrix{Int64}}
-    indsA::Vector{Vector{Int}} # note that indsA contains fewer indices
+    indsA::Vector{Vector{Int}} # note that indsA contains fewer indices -> should be used as column
     indsB::Vector{Vector{Int}}
-    #krange::UnitRange{Int}
     size::Int
     function SymmZBlockEntanglementEntropy(zblockbasis, N1)
         N = zblockbasis.N
         k = zblockbasis.k
         N1 = max(N1, N-N1)
-        #inds = SpinSymmetry._indices(zblockbasis)
-        #indexLookup = Dict((i, pos) for (pos, i) in enumerate(inds))
         indexLookup = zeros(2^N)
         indexLookup[_zblock_inds(N, k)] = 1:binomial(N,k)
         krange = max(0,N1+k-N):min(N1, k)
@@ -93,27 +71,12 @@ entanglement_entropy(s::SymmZBlockEntanglementEntropy, ψ) = entanglement_entrop
 
 function entanglement_entropy!(out, s::SymmZBlockEntanglementEntropy, ψ)
     NB = s.Nfull
-    #for indmat in s.allinds
     for (indA, indB) in zip(s.indsA, s.indsB)
-        # indsA is shorter! -> take as column
-        # l = size(indmat, 1)
-		# temp = zeros(eltype(ψ), l, l)
-		# vals = zeros(eltype(ψ), l)
+        ## No point in optimizing this allocation further.
         mat = Matrix{eltype(ψ)}(undef, length(indA), length(indB))
         for shift in 1:s.size
-            # fill!(temp, 0)
-            # for inds in eachcol(indmat)
-            #     #vals .= getindex.(Ref(ψ), getindex.(Ref(s.indexLookup), SpinSymmetry._roll_bits.(NB, inds .- 1, shift-1) .+ 1))
-            #     for i in 1:l
-            #         vals[i] = ψ[s.indexLookup[SpinSymmetry._roll_bits(NB, inds[i]-1, shift-1)+1]]
-            #     end
-            #     #temp += vals * vals'
-            #     temp = mul!(temp, vals, vals', 1, 1) # compute temp += vals * vals'
-            # end
-            #println("diag $(size(temp))")
-            # out[shift] += entropy(eigvals!(Hermitian(temp)))
             mat .= getindex.(Ref(ψ), getindex.(Ref(s.indexLookup), SpinSymmetry._roll_bits.(NB, indA .+ indB', shift-1) .+ 1))
-            out[shift] += entropy(svdvals!(mat) .^ 2)
+            out[shift] += entropy(svdvals!(mat) .^ 2) #  most allocations come from svdvals!
 		end
 	end
     out
@@ -155,5 +118,7 @@ end
 function ED.assemble(task::HalfChainEntropyTask, edd)
     HCEData(HCEDataDescriptor(task.L, task.symm, edd), sdata(task.data))
 end
+
+Base.summary(task::HalfChainEntropyTask) = string(typeof(task)) * "(L=$(task.L), symm=$(task.symm))"
 
 end # module
