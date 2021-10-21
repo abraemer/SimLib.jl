@@ -43,8 +43,6 @@ edd = EDDataDescriptor(pdd, alpha, fields, :ensemble, basis)
 
 @time edata = run_ed(edd, posdata, tasks)
 
-println("\n\n\n\n")
-@time edata = run_ed(edd, posdata, tasks)
 save.(edata) # save all data
 
 ## Ensemble data
