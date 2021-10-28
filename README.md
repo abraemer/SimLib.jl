@@ -20,3 +20,15 @@ There are also some very basic tests around, running all simulation steps for so
 
 ## Example
 For a small example showcasing a simulation script, see `notebooks/generate_test_data.jl` (which actually not a `Pluto.jl` notebook and probably should be in a different place).
+
+## Implemented quantities
+ - Energies (= levels)
+ - eigenstate occupation
+ - operator diagonal (= eigenstate expectation values)
+ - Half-chain entropy (arb. subsystem lengths, only for zblock basis)
+ - eigenstate locality
+ - inverse participation ratio (basic)
+ - Level spacing ratio
+ - Ensemble prediction
+
+Every quantity (except the last 2) need to be computed as an EDTask! LSR can be computed via a Task.
