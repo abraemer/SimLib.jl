@@ -2,7 +2,7 @@ module Levels
 
 import ..ED
 using .. SimLib
-using ..SimLib: FArray, Maybe
+using ..SimLib: FArray
 using SpinSymmetry: basissize
 using SharedArrays: sdata
 

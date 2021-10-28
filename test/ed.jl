@@ -13,12 +13,14 @@
 
     ### tasks
     evaltask = Energies()
-    eontask = eontask = EigenstateOccupation("xpol", symmetrize_state(normalize!(ones(2^7)), basis))
+    eontask = EigenstateOccupation("xpol", symmetrize_state(normalize!(ones(2^7)), basis))
     eevtask = OperatorDiagonal("xmag", symmetrize_operator(sum(op_list(σx/2, 7))/7, basis))
     eltask = EigenstateLocality("sz", symmetrize_operator(single_spin_op(σz, 1, 7), basis))
     lsrtask = LevelSpacingRatio()
+    iprtask = InverseParticipationRatio()
 
-    tasks = [evaltask, eontask, eevtask, lsrtask, eltask]
+    tasks = [evaltask, eontask, eevtask, lsrtask, eltask, iprtask]
+    @show isa.(tasks, ED.EDTask)
 
     ### THREADED RUN
     # remove processes to run threaded

@@ -7,8 +7,6 @@ using ..SimLib: FArray
 using SpinSymmetry: basissize
 
 import Statistics
-using Printf: @sprintf
-import JLD2
 
 export levelspacingratio, LSRData, LSRDataDescriptor, center_region, load_lsr, LevelSpacingRatio
 
