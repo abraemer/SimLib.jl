@@ -1,5 +1,5 @@
 function logmsg(msg...; doflush=true)
-    println("[$(now())] $(join(msg, " | "))")
+    println("[",now(), "]", msg...)
     doflush && flush(stdout)
 end
 

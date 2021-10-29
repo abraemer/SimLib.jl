@@ -4,7 +4,6 @@ import ..ED
 using .. SimLib
 using ..SimLib: Maybe
 using LinearAlgebra
-using SpinSymmetry: basissize
 using SharedArrays: sdata
 
 export EigenstateLocality, ELDataDescriptor, ELData, load_el
@@ -37,9 +36,9 @@ load_el(geometry, dimension, system_size, α, operatorname, location=SaveLocatio
 
 eigenstatelocality(eigen, operator) = eigenstatelocality!(Vector{Float64}(undef, length(eigen.values)-1), eigen, operator)
 
-function eigenstatelocality!(res, eigen, operator)
-    evals = eigen.values
-    evecs = eigen.vectors
+eigenstatelocality!(res, eigen, operator) = eigenstatelocality!(res, eigen.values, eigen.vectors, operator)
+
+function eigenstatelocality!(res, evals, evecs, operator)
     energies = [eva + real(dot(eve, operator, eve)) for (eva, eve) in zip(evals, eachcol(evecs))]
     order = sortperm(energies)
     for (i, (index, nextindex)) in enumerate(zip(order[1:end-1], order[2:end]))
@@ -61,11 +60,11 @@ EigenstateLocality(operatorname, operator) = ELTask(operatorname, operator, noth
 
 
 function ED.initialize!(task::ELTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, basissize(edd.basis)-1, edd.shots, length(edd.fields), length(edd.ρs))
+    task.data = arrayconstructor(Float64, ED.ed_size(edd)-1, edd.shots, length(edd.fields), length(edd.ρs))
 end
 
-function ED.compute_task!(task::ELTask, ρindex, shot, fieldindex, eigen)
-    eigenstatelocality!(view(task.data, :, shot, fieldindex, ρindex), eigen, task.operator)
+function ED.compute_task!(task::ELTask, ρindex, shot, fieldindex, evals, evecs)
+    eigenstatelocality!(view(task.data, 1:length(evals)-1, shot, fieldindex, ρindex), evals, evecs, task.operator)
 end
 
 function ED.failed_task!(task::ELTask, ρindex, shot, fieldindex)

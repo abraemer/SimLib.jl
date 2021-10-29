@@ -102,11 +102,11 @@ function ED.initialize!(task::HalfChainEntropyTask, edd, arrayconstructor)
         task.L = div(edd.basis.basis.k, 2) # half-chain is default
     end
     task.entropy_strategy = SymmZBlockEntanglementEntropy(edd.basis.basis, task.L)
-    task.data = arrayconstructor(Float64, task.entropy_strategy.size, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
+    task.data = arrayconstructor(Float64, task.entropy_strategy.size, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
-function ED.compute_task!(task::HalfChainEntropyTask, ρindex, shot, fieldindex, eigen)
-    for (i, ψ) in enumerate(eachcol(eigen.vectors))
+function ED.compute_task!(task::HalfChainEntropyTask, ρindex, shot, fieldindex, evals, evecs)
+    for (i, ψ) in enumerate(eachcol(evecs))
         entanglement_entropy!(view(task.data, :, i, shot, fieldindex, ρindex), task.entropy_strategy, ψ)
     end
 end

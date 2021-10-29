@@ -4,7 +4,6 @@ import ..ED
 using .. SimLib
 using ..SimLib: Maybe
 using LinearAlgebra
-using SpinSymmetry: basissize
 using SharedArrays: sdata
 
 export OperatorDiagonal, OPDiagDataDescriptor, OPDiagData, load_opdiag
@@ -46,21 +45,21 @@ OperatorDiagonal(opname, operator) = OPDiagTask{Val(ishermitian(operator)), type
 const HermitianOPDiagTask = OPDiagTask{Val(true)}
 
 function ED.initialize!(task::OPDiagTask, edd, arrayconstructor)
-    task.data = arrayconstructor(ComplexF64, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
+    task.data = arrayconstructor(ComplexF64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
 function ED.initialize!(task::HermitianOPDiagTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
+    task.data = arrayconstructor(Float64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
-function ED.compute_task!(task::HermitianOPDiagTask, ρindex, shot, fieldindex, eigen)
-    for (i, vec) in enumerate(eachcol(eigen.vectors))
+function ED.compute_task!(task::HermitianOPDiagTask, ρindex, shot, fieldindex, evals, evecs)
+    for (i, vec) in enumerate(eachcol(evecs))
         task.data[i, shot, fieldindex, ρindex] = real(dot(vec, task.op, vec))
     end
 end
 
-function ED.compute_task!(task::OPDiagTask, ρindex, shot, fieldindex, eigen)
-    for (i, vec) in enumerate(eachcol(eigen.vectors))
+function ED.compute_task!(task::OPDiagTask, ρindex, shot, fieldindex, evals, evecs)
+    for (i, vec) in enumerate(eachcol(evecs))
         task.data[i, shot, fieldindex, ρindex] = dot(vec, task.op, vec)
     end
 end
