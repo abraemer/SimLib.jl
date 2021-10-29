@@ -6,7 +6,7 @@
 
     pdd = PositionDataDescriptor(:box, 1, 7, 20, [0.1, 0.2], location)
     basis = symmetrized_basis(7, Flip(7), 0)
-    edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, basis; suffix="threaded")
+    edd = EDDataDescriptor(pdd, 6, [-0.2, -0.1, 0.1, 0.2], :ensemble, basis; suffix="full_ed_threaded")
     ensdd = EnsembleDataDescriptor(edd)
 
     ensdata = load_or_create(ensdd, location) # should load the ED data since previous test saved it, and save to file without suffix

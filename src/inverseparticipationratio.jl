@@ -62,7 +62,7 @@ struct IPRData <: ED.EDDerivedData
     data::FArray{4}
 end
 
-IPRData(lsrdd::IPRDataDescriptor) = IPRData(lsrdd, FArray{4}(undef, basissize(lsrdd.basis), lsrdd.shots, length(lsrdd.fields), length(lsrdd.ρs)))
+IPRData(iprdd::IPRDataDescriptor) = IPRData(iprdd, FArray{4}(undef, ED.ed_size(iprdd), iprdd.shots, length(iprdd.fields), length(iprdd.ρs)))
 
 ## Saving/Loading
 
@@ -78,12 +78,13 @@ const inverse_participation_ratio = ipr
 
 function ipr!(v, mat)
     I, J = size(mat)
+    J == length(v) || throw(ArgumentError("Sizes not compatible: $(size(v)) and $(size(mat))"))
     @inbounds for j in 1:J
         tmp = zero(Float64)
-        for i in I
+        for i in 1:I
             tmp += abs2(mat[i,j])^2
         end
-        v[j] = tmp
+        v[j] = 1/tmp
     end
     v
 end
@@ -97,11 +98,11 @@ end
 InverseParticipationRatio() = IPRTask(nothing)
 
 function ED.initialize!(task::IPRTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
+    task.data = arrayconstructor(Float64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
-function ED.compute_task!(task::IPRTask, ρindex, shot, fieldindex, eigen)
-    ipr!(view(task.data, :,shot, fieldindex, ρindex), eigen.vectors)
+function ED.compute_task!(task::IPRTask, ρindex, shot, fieldindex, evals, evecs)
+    ipr!(view(task.data, 1:length(evals), shot, fieldindex, ρindex), evecs)
 end
 
 function ED.failed_task!(task::IPRTask, ρindex, shot, fieldindex)

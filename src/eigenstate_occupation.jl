@@ -4,7 +4,6 @@ import ..ED
 using .. SimLib
 using ..SimLib: Maybe
 using LinearAlgebra
-using SpinSymmetry: basissize
 using SharedArrays: sdata
 
 export EigenstateOccupation, EONDataDescriptor, EONData, load_eon
@@ -25,7 +24,7 @@ EONDataDescriptor(state, statename::String, args...; kwargs...) = EONDataDescrip
 
 struct EONData{T} <: ED.EDDerivedData
     descriptor::EONDataDescriptor{T}
-    data::Array{ComplexF64, 4}
+    data::Array{Float64, 4}
 end
 
 ED._default_folder(::EONDataDescriptor) = "eon"
@@ -45,12 +44,12 @@ EigenstateOccupation(statename, state) = EONTask(statename, state, nothing)
 
 
 function ED.initialize!(task::EONTask, edd, arrayconstructor)
-    task.data = arrayconstructor(ComplexF64, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
+    task.data = arrayconstructor(Float64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
-function ED.compute_task!(task::EONTask, ρindex, shot, fieldindex, eigen)
-    for (i, vec) in enumerate(eachcol(eigen.vectors))
-        task.data[i, shot, fieldindex, ρindex] = dot(vec, task.state)
+function ED.compute_task!(task::EONTask, ρindex, shot, fieldindex, evals, evecs)
+    for (i, vec) in enumerate(eachcol(evecs))
+        task.data[i, shot, fieldindex, ρindex] = abs2(dot(vec, task.state))
     end
 end
 

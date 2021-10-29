@@ -1,6 +1,32 @@
 
 ## Data structure
 
+abstract type DiagonalizationType end
+
+function _ed_size end
+function execute_diag! end
+
+struct Full <: DiagonalizationType end
+Base.:(==)(::Full, ::Full) = true
+
+execute_diag!(::Full, mat) = eigen!(mat)
+_ed_size(::Full, edd) = basissize(edd.basis)
+
+struct Sparse <: DiagonalizationType
+    σ::Float64
+    count::Int
+end
+Base.:(==)(s1::Sparse, s2::Sparse) = s1.σ == s2.σ && s1.count == s2.count
+
+## TODO think about tolerance?
+## TODO check convergence?
+function execute_diag!(sp::Sparse, mat)
+    evals, evecs, nconv, niter, nmult, resid = eigs(mat; nev=sp.count, sigma=sp.σ, which=:LM, tol=0, check=2)
+    logmsg("converged=",nconv,"/",sp.count," | niter=",niter)
+    return evals, evecs
+end
+_ed_size(sp::Sparse, edd) = sp.count
+
 """
     struct EDDataDescriptor
 
@@ -27,28 +53,52 @@ struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
     fields::Maybe{FArray{1}}
     scale_fields::Maybe{Symbol}
     basis::Maybe{Union{SymmetrizedBasis, FullZBasis, ZBlockBasis}}
+    diagtype::Maybe{DiagonalizationType}
     pathdata::SaveLocation
-    function EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, pathdata::SaveLocation)
+    function EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, diagtype, pathdata::SaveLocation)
         geometry ∈ SimLib.GEOMETRIES || error("Unknown geometry: $geom")
         scale_fields ∈ [:none, :ensemble, :shot]
-        new(geometry, dimension, system_size, α, shots, ismissing(ρs) ? missing : unique!(sort(collect(ρs))), ismissing(fields) ? missing : unique!(sort(collect(fields))), scale_fields, basis, pathdata::SaveLocation)
+        new(geometry, dimension, system_size, α, shots, ismissing(ρs) ? missing : unique!(sort(collect(ρs))), ismissing(fields) ? missing : unique!(sort(collect(fields))), scale_fields, basis, diagtype, pathdata::SaveLocation)
     end
 end
 
 _default_basis(N) = symmetrized_basis(N, Flip(N), 0)
-
-EDDataDescriptor(posdata::PositionDataDescriptor, α, fields=missing, scale_fields=missing, basis=_default_basis(posdata.system_size); prefix=posdata.pathdata.prefix, suffix=posdata.pathdata.suffix) =
-    EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, α, posdata.shots, posdata.ρs, fields, scale_fields, basis, SaveLocation(prefix, suffix))
-
+# unpack PositionData
 EDDataDescriptor(posdata::PositionData, args...; kwargs...) = EDDataDescriptor(descriptor(posdata), args...; kwargs...)
 
-function EDDataDescriptor(geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=missing, basis=_default_basis(system_size), savelocation=SaveLocation(); prefix=savelocation.prefix, suffix=savelocation.suffix)
-    EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, SaveLocation(; prefix, suffix))
+# handle construction from PositionDataDescriptor and possible location overrides
+function EDDataDescriptor(posdata::PositionDataDescriptor, args...; pathdata=posdata.pathdata, prefix=pathdata.prefix, suffix=pathdata.prefix, kwargs...)
+    EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, args...; ρs=posdata.ρs, shots=posdata.shots, prefix, suffix, kwargs...)
 end
+
+# full kwargs constructor
+function EDDataDescriptor(geometry, dimension, system_size, α; kwargs...)
+    EDDataDescriptor(; geometry, dimension, system_size, α, kwargs...)
+end
+
+function EDDataDescriptor(geometry, dimension, system_size; kwargs...)
+    EDDataDescriptor(; geometry, dimension, system_size, kwargs...)
+end
+
+# full constructor
+function EDDataDescriptor(;geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=missing, basis=_default_basis(system_size), diagtype=Full(), pathdata=SaveLocation(), prefix=pathdata.prefix, suffix=pathdata.suffix)
+    EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, diagtype, SaveLocation(prefix, suffix))
+end
+
+# old positional constructor
+EDDataDescriptor(posdata::PositionDataDescriptor, α, fields=missing, scale_fields=missing, basis=_default_basis(posdata.system_size), diagtype=Full(); prefix=posdata.pathdata.prefix, suffix=posdata.pathdata.suffix) =
+    EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, α, posdata.shots, posdata.ρs, fields, scale_fields, basis, diagtype, SaveLocation(prefix, suffix))
+
+# function EDDataDescriptor(geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=missing, basis=_default_basis(system_size), diagtype=Full(), savelocation=SaveLocation(); prefix=savelocation.prefix, suffix=savelocation.suffix)
+#     EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, diagtype, SaveLocation(; prefix, suffix))
+# end
 
 function Base.:(==)(d1::EDDataDescriptor, d2::EDDataDescriptor)
     all(getfield(d1, f) == getfield(d2, f) for f in [:geometry, :dimension, :α, :shots, :ρs, :fields, :scale_fields, :basis])
 end
+
+ed_size(edd) = _ed_size(edd.diagtype, edd)
+ed_size(eddd::EDDerivedDataDescriptor) = ed_size(eddd.derivedfrom) # technically unnecessary as properties are forwarded anyways
 
 """
     struct EDData
@@ -112,7 +162,7 @@ function _compute_parallel_job!(tasks, interactions, workload, desc)
     tasks = initialize_local.(tasks)
 
     logmsg("Range: $(workload) on #$(indexpids(interactions))")
-    _compute_core!(tasks, interactions, workload, desc.fields, field_operator, desc.basis)
+    _compute_core!(tasks, interactions, workload, desc.fields, field_operator, desc.basis, desc.diagtype)
 end
 
 function _compute_threaded!(tasks, edd, posdata)
@@ -133,11 +183,11 @@ function _compute_threaded!(tasks, edd, posdata)
     workers = max(1, Threads.nthreads()-1)
     workloads = _workload_chunks(nshots*nρs, workers)
     @sync for i in 1:workers
-        Threads.@spawn _compute_core!(tasks, interactions, workloads[i], edd.fields, field_operator, edd.basis)
+        Threads.@spawn _compute_core!(tasks, interactions, workloads[i], edd.fields, field_operator, edd.basis, edd.diagtype)
     end
 end
 
-function _compute_core!(tasks, interactions, workload, field_values, field_operator, symmetry)
+function _compute_core!(tasks, interactions, workload, field_values, field_operator, symmetry, diagtype)
     tasks = initialize_local.(tasks)
     nshots = size(interactions, 3)
     matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate, but DENSE
@@ -149,8 +199,8 @@ function _compute_core!(tasks, interactions, workload, field_values, field_opera
         for (k, h) in enumerate(field_values)
             copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
             try
-                eigen = eigen!(Hermitian(matrix))
-                compute_task!.(tasks, i, shot, k, Ref(eigen))
+                evals, evecs = execute_diag!(diagtype, Hermitian(matrix))
+                compute_task!.(tasks, i, shot, k, Ref(evals), Ref(evecs))
             catch e;
                 logmsg("Error occured for #field=$k shot=$shot #rho=$i: $e")
                 display(stacktrace(catch_backtrace()))

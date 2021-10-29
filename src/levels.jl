@@ -3,7 +3,6 @@ module Levels
 import ..ED
 using .. SimLib
 using ..SimLib: FArray
-using SpinSymmetry: basissize
 using SharedArrays: sdata
 
 export Energies, LevelDataDescriptor, LevelData, load_levels
@@ -41,11 +40,11 @@ end
 Energies() = LevelTask(nothing)
 
 function ED.initialize!(task::LevelTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, basissize(edd.basis), edd.shots, length(edd.fields), length(edd.ρs))
+    task.data = arrayconstructor(Float64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
 end
 
-function ED.compute_task!(task::LevelTask, ρindex, shot, fieldindex, eigen)
-    task.data[:, shot, fieldindex, ρindex] .= eigen.values
+function ED.compute_task!(task::LevelTask, ρindex, shot, fieldindex, evals, evecs)
+    task.data[1:length(evals), shot, fieldindex, ρindex] .= evals
 end
 
 function ED.failed_task!(task::LevelTask, ρindex, shot, fieldindex)

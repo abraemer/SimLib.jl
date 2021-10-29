@@ -4,7 +4,6 @@ import ..ED
 using ..Levels
 using ..SimLib
 using ..SimLib: FArray
-using SpinSymmetry: basissize
 
 import Statistics
 
@@ -59,7 +58,7 @@ struct LSRData <: ED.EDDerivedData
     data::FArray{4}
 end
 
-LSRData(lsrdd::LSRDataDescriptor) = LSRData(lsrdd, FArray{4}(undef, basissize(lsrdd.basis), lsrdd.shots, length(lsrdd.fields), length(lsrdd.ρs)))
+LSRData(lsrdd::LSRDataDescriptor) = LSRData(lsrdd, FArray{4}(undef, ED.ed_size(lsrdd), lsrdd.shots, length(lsrdd.fields), length(lsrdd.ρs)))
 
 ## Saving/Loading
 
@@ -111,11 +110,11 @@ end
 LevelSpacingRatio() = LSRTask(nothing)
 
 function ED.initialize!(task::LSRTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, basissize(edd.basis)-2, edd.shots, length(edd.fields), length(edd.ρs))
+    task.data = arrayconstructor(Float64, ED.ed_size(edd)-2, edd.shots, length(edd.fields), length(edd.ρs))
 end
 
-function ED.compute_task!(task::LSRTask, ρindex, shot, fieldindex, eigen)
-    task.data[:, shot, fieldindex, ρindex] .= levelspacingratio(eigen.values)
+function ED.compute_task!(task::LSRTask, ρindex, shot, fieldindex, evals, evecs)
+    task.data[1:length(evals)-2, shot, fieldindex, ρindex] .= levelspacingratio(evals)
 end
 
 function ED.failed_task!(task::LSRTask, ρindex, shot, fieldindex)

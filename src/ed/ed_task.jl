@@ -57,5 +57,5 @@ function failed_task! end
 # task, EDDataDescriptor -> Data object
 function assemble end
 
-_array_constructor(type, dims...) = zeros(type, dims)
-_sharedarray_constructor(type, dims...) = SharedArray{type}(dims)
+_array_constructor(type, dims...) = fill(convert(type, NaN), dims)
+_sharedarray_constructor(type, dims...) = fill!(SharedArray{type}(dims), NaN)

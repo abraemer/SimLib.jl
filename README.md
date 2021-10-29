@@ -32,3 +32,6 @@ For a small example showcasing a simulation script, see `notebooks/generate_test
  - Ensemble prediction
 
 Every quantity (except the last 2) need to be computed as an EDTask! LSR can be computed via a Task.
+
+## Sparse diagonalization
+New Feature: Construct EDDataDescriptor with `diagtype=Sparse(σ, count)` to compute only `count` many levels around `σ`!
