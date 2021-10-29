@@ -67,7 +67,7 @@ _default_basis(N) = symmetrized_basis(N, Flip(N), 0)
 EDDataDescriptor(posdata::PositionData, args...; kwargs...) = EDDataDescriptor(descriptor(posdata), args...; kwargs...)
 
 # handle construction from PositionDataDescriptor and possible location overrides
-function EDDataDescriptor(posdata::PositionDataDescriptor, args...; pathdata=posdata.pathdata, prefix=pathdata.prefix, suffix=pathdata.prefix, kwargs...)
+function EDDataDescriptor(posdata::PositionDataDescriptor, args...; pathdata=posdata.pathdata, prefix=pathdata.prefix, suffix=pathdata.suffix, kwargs...)
     EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, args...; ρs=posdata.ρs, shots=posdata.shots, prefix, suffix, kwargs...)
 end
 
