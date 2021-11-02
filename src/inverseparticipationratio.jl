@@ -32,7 +32,7 @@ struct IPRDataDescriptor <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
 end
 
-IPRDataDescriptor(args...; kwargs...) = IPRataDescriptor(EDDataDescriptor(args...; kwargs...))
+IPRDataDescriptor(args...; kwargs...) = IPRDataDescriptor(EDDataDescriptor(args...; kwargs...))
 
 
 """
