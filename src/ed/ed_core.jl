@@ -223,6 +223,7 @@ function _compute_core!(tasks, interactions, workload, field_values, field_opera
         for (k, h) in enumerate(field_values)
             try
                 evals, evecs, nconv, niter, _, _ = eigs(Hermitian(model + h*field_operator); nev, sigma, which=:LM, tol=0, check=2)
+                evals, evecs = LinearAlgebra.sorteig!(evals, evecs)
                 logmsg("converged=",nconv,"/",count," | niter=",niter)
                 compute_task!.(tasks, i, shot, k, Ref(evals), Ref(evecs))
             catch e;
