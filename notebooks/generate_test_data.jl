@@ -1,5 +1,5 @@
 import Pkg
-Pkg.activate(dirname(@__FILE__))
+Pkg.activate(dirname(dirname(@__FILE__)))
 
 using LinearAlgebra: I, normalize!
 using Random
