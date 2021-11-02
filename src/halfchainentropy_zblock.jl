@@ -35,7 +35,7 @@ end
 ED._default_folder(::HCEDataDescriptor) = "entropy"
 ED._filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm ? "_symm" : "")
 
-load_entropy(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(HCEDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
+load_entropy(geometry, dimension, system_size, α, L, symm=true, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(HCEDataDescriptor(L, symm, geometry, dimension, system_size, α; prefix, suffix))
 
 
 ## Functions
