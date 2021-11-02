@@ -71,6 +71,7 @@ entanglement_entropy(s::SymmZBlockEntanglementEntropy, ψ) = entanglement_entrop
 
 function entanglement_entropy!(out, s::SymmZBlockEntanglementEntropy, ψ)
     NB = s.Nfull
+    fill!(out, 0)
     for (indA, indB) in zip(s.indsA, s.indsB)
         ## No point in optimizing this allocation further.
         mat = Matrix{eltype(ψ)}(undef, length(indA), length(indB))
@@ -99,7 +100,7 @@ HalfChainEntropyZBlock(; L=missing) = HalfChainEntropyZBlock(L)
 function ED.initialize!(task::HalfChainEntropyTask, edd, arrayconstructor)
     if ismissing(task.L)
         ## TODO this is not universal! basis might also be a ZBlockBasis directly...
-        task.L = div(edd.basis.basis.k, 2) # half-chain is default
+        task.L = div(edd.basis.basis.N, 2) # half-chain is default
     end
     task.entropy_strategy = SymmZBlockEntanglementEntropy(edd.basis.basis, task.L)
     task.data = arrayconstructor(Float64, task.entropy_strategy.size, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
