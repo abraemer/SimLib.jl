@@ -4,12 +4,10 @@
 abstract type DiagonalizationType end
 
 function _ed_size end
-function execute_diag! end
 
 struct Full <: DiagonalizationType end
 Base.:(==)(::Full, ::Full) = true
 
-execute_diag!(::Full, mat) = eigen!(mat)
 _ed_size(::Full, edd) = basissize(edd.basis)
 
 struct Sparse <: DiagonalizationType
@@ -21,8 +19,7 @@ Base.:(==)(s1::Sparse, s2::Sparse) = s1.σ == s2.σ && s1.count == s2.count
 ## TODO think about tolerance?
 ## TODO check convergence?
 function execute_diag!(sp::Sparse, mat)
-    evals, evecs, nconv, niter, nmult, resid = eigs(mat; nev=sp.count, sigma=sp.σ, which=:LM, tol=0, check=2)
-    logmsg("converged=",nconv,"/",sp.count," | niter=",niter)
+
     return evals, evecs
 end
 _ed_size(sp::Sparse, edd) = sp.count
@@ -187,7 +184,8 @@ function _compute_threaded!(tasks, edd, posdata)
     end
 end
 
-function _compute_core!(tasks, interactions, workload, field_values, field_operator, symmetry, diagtype)
+## TODO better design? less copy-paste?
+function _compute_core!(tasks, interactions, workload, field_values, field_operator, symmetry, diagtype::Full)
     tasks = initialize_local.(tasks)
     nshots = size(interactions, 3)
     matrix = zeros(eltype(field_operator), size(field_operator)) # preallocate, but DENSE
@@ -199,7 +197,7 @@ function _compute_core!(tasks, interactions, workload, field_values, field_opera
         for (k, h) in enumerate(field_values)
             copyto!(matrix, model + h*field_operator) # this also converts from sparse to dense!
             try
-                evals, evecs = execute_diag!(diagtype, Hermitian(matrix))
+                evals, evecs = eigen!(Hermitian(matrix))
                 compute_task!.(tasks, i, shot, k, Ref(evals), Ref(evecs))
             catch e;
                 logmsg("Error occured for #field=$k shot=$shot #rho=$i: $e")
@@ -211,6 +209,33 @@ function _compute_core!(tasks, interactions, workload, field_values, field_opera
         logmsg(@sprintf("Done %03i - #rho =%2i - %03i/%03i", index, i, shot, nshots))
     end
 end
+
+function _compute_core!(tasks, interactions, workload, field_values, field_operator, symmetry, diagtype::Sparse)
+    tasks = initialize_local.(tasks)
+    nshots = size(interactions, 3)
+    nev = diagtype.count
+    sigma = diagtype.σ
+    for index in workload
+        i, shot = _flat_to_indices(index, nshots)
+        J = @view interactions[:,:, shot, i]
+        model = real.(symmetrize_operator(xxzmodel(J, -0.73), symmetry))
+
+        for (k, h) in enumerate(field_values)
+            try
+                evals, evecs, nconv, niter, _, _ = eigs(Hermitian(model + h*field_operator); nev, sigma, which=:LM, tol=0, check=2)
+                logmsg("converged=",nconv,"/",count," | niter=",niter)
+                compute_task!.(tasks, i, shot, k, Ref(evals), Ref(evecs))
+            catch e;
+                logmsg("Error occured for #field=$k shot=$shot #rho=$i: $e")
+                display(stacktrace(catch_backtrace()))
+                failed_task!.(tasks, i, shot, k)
+                continue
+            end
+        end
+        logmsg(@sprintf("Done %03i - #rho =%2i - %03i/%03i", index, i, shot, nshots))
+    end
+end
+
 
 function _compute_interactions!(arr, edd, posdata)
     logmsg("Calculating interactions (scaling = $(edd.scale_fields))")
