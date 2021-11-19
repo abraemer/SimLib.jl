@@ -129,7 +129,7 @@ function ensemble_predictions(evals, eon, eev)
 end
 
 function ensemble_predictions!(ensemble_data, evals, eon, eev)
-    if !(eltype(evals) isa Real)
+    if !(eltype(eon) <: Real)
         eon = abs2.(eon)
         logmsg("Ensemble prediction: Got amplitudes -> squaring.")
     end
