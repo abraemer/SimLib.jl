@@ -7,6 +7,9 @@ mutable struct RandomPositionsXXZWithXField <: Model
     basis
 end
 
+# small constructor - useful for loading
+RandomPositionsXXZWithXField(posdatadescriptor, interaction) = RandomPositionsXXZWithXField(posdatadescriptor, interaction, nothing, nothing, nothing)
+
 function Base.getproperty(xxz::RandomPositionsXXZWithXField, p::Symbol)
     if hasfield(typeof(xxz), p)
         return getfield(xxz, p)
@@ -24,7 +27,8 @@ struct PreparedJXXZWithField{JT,SB}
     basis::SB
 end
 
-parameter_dims(model::PreparedJXXZWithField) = (length(model.fields), size(model.J)[3], size(model.J)[4])
+# shot, field, rho
+parameter_dims(model::PreparedJXXZWithField) = (size(model.J)[3], length(model.fields), size(model.J)[4])
 
 function initialize_model!(model::RandomPositionsXXZWithXField, array_initializer)
     posdata = load(model.posdatadescriptor)
@@ -81,13 +85,13 @@ function do_parameters(diag_callback, model::PreparedJXXZWithField, parameter_ch
     field_operator = sum(spin_ops)
     nshots = size(model.J, 3)
     for index in parameter_chunk
-        i, shot = _flat_to_indices(index, nshots)
+       ρindex, shot = _flat_to_indices(index, nshots)
 
-        J = @view model.J[:,:, shot, i]
+        J = @view model.J[:,:, shot, ρindex]
         H_int = symmetrize_operator(xxzmodel(J, -0.73), model.basis)
 
         for (k, h) in enumerate(model.fields)
-            parameterI = CartesianIndex(k, shot, i)
+            parameterI = CartesianIndex(shot, k, ρindex)
             diag_callback(parameterI, H_int + h*field_operator)
         end
     end

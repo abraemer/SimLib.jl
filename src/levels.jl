@@ -29,7 +29,11 @@ end
 ED._default_folder(::LevelDataDescriptor) = "levels"
 #_filename_addition(::LevelData) = "" # default
 
-load_levels(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(LevelDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_levels(edd)
+    load_levels(model[, diagtype][, location])
+"""
+load_levels(args...; kwargs...) = load(LevelDataDescriptor(args...; kwargs...))
 
 ### Task
 

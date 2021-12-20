@@ -19,9 +19,8 @@ struct HCEDataDescriptor <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
 end
 
-
-
-HCEDataDescriptor(L, symm, args...; kwargs...) = HCEDataDescriptor(L, symm, EDDataDescriptor(args...; kwargs...))
+HCEDataDescriptor(L, args...; kwargs...) = HCEDataDescriptor(L, true, args...; kwargs...)
+HCEDataDescriptor(L, symm::Bool, args...; kwargs...) = HCEDataDescriptor(L, symm, EDDataDescriptor(args...; kwargs...))
 
 
 
@@ -35,7 +34,11 @@ end
 ED._default_folder(::HCEDataDescriptor) = "entropy"
 ED._filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm ? "_symm" : "")
 
-load_entropy(geometry, dimension, system_size, α, L, symm=true, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(HCEDataDescriptor(L, symm, geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_entropy(L[, symm], edd)
+    load_entropy(L[, symm], model[, diagtype][, location])
+"""
+load_endtropy(args...; kwargs...) =  load(HCEDataDescriptor(args...; kwargs...))
 
 
 ## Functions

@@ -65,7 +65,11 @@ LSRData(lsrdd::LSRDataDescriptor) = LSRData(lsrdd, FArray{4}(undef, ED.ed_size(l
 
 ED._default_folder(::LSRDataDescriptor) = "lsr"
 
-load_lsr(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(LSRDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_lsr(edd)
+    load_lsr(model[, diagtype][, location])
+"""
+load_lsr(args...; kwargs...) = load(LSRDataDescriptor(args...; kwargs...))
 
 function center_indices(L, center_region)
     cutoff = floor(Int, (L*(1-center_region)/2))

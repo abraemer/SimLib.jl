@@ -68,7 +68,11 @@ IPRData(iprdd::IPRDataDescriptor) = IPRData(iprdd, FArray{4}(undef, ED.ed_size(i
 
 ED._default_folder(::IPRDataDescriptor) = "ipr"
 
-load_ipr(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(IPRDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_ipr(edd)
+    load_ipr(model[, diagtype][, location])
+"""
+load_ipr(args...; kwargs...) = load(IPRDataDescriptor(args...; kwargs...))
 
 ## Functions
 

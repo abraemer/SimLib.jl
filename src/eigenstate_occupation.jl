@@ -30,7 +30,11 @@ end
 ED._default_folder(::EONDataDescriptor) = "eon"
 ED._filename_addition(opdd::EONDataDescriptor) = "_" * opdd.statename
 
-load_eon(geometry, dimension, system_size, α, statename, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EONDataDescriptor(statename, geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_eon(statename, edd)
+    load_eon(statename, model[, diagtype] [, location])
+"""
+load_eon(args...; kwargs...) = load(EONDataDescriptor(args...; kwargs...))
 
 ### Task
 

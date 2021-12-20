@@ -30,7 +30,11 @@ end
 ED._default_folder(::OPDiagDataDescriptor) = "opdiag"
 ED._filename_addition(opdd::OPDiagDataDescriptor) = "_" * opdd.opname
 
-load_opdiag(geometry, dimension, system_size, α, opname, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(OPDiagDataDescriptor(opname, geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_opdiag(opname, edd)
+    load_opdiag(opname, model[, diagtype][, location])
+"""
+load_opdiag(args...; kwargs...) = load(OPDiagDataDescriptor(args...; kwargs...))
 
 ### Task
 

@@ -24,7 +24,13 @@ struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
     #     scale_fields ∈ [:none, :ensemble, :shot]
     #     new(geometry, dimension, system_size, α, shots, ismissing(ρs) ? missing : unique!(sort(collect(ρs))), ismissing(fields) ? missing : unique!(sort(collect(fields))), scale_fields, basis, diagtype, pathdata::SaveLocation)
     # end
+    function EDDataDescriptor(model, diagtype=missing, pathdata=SaveLocation(); suffix=pathdata.suffix, prefix=pathdata.prefix)
+        new(model, diagtype, SaveLocation(;suffix, prefix))
+    end
 end
+
+# constructor for easier loading
+EDDataDescriptor(model, pathdata::SaveLocation=SaveLocation(); kwargs...) = EDDataDescriptor(model, missing, pathdata; kwargs...)
 
 # _default_basis(N) = symmetrized_basis(N, Flip(N), 0)
 # # unpack PositionData

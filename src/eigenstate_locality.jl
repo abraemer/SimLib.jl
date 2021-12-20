@@ -16,7 +16,6 @@ struct ELDataDescriptor{T} <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
 end
 
-
 ELDataDescriptor(operatorname::String, args...; kwargs...) = ELDataDescriptor(nothing, operatorname, args...; kwargs...)
 ELDataDescriptor(operator, operatorname::String, args...; kwargs...) = ELDataDescriptor(operator, operatorname, EDDataDescriptor(args...; kwargs...))
 
@@ -30,7 +29,11 @@ end
 ED._default_folder(::ELDataDescriptor) = "locality"
 ED._filename_addition(eldd::ELDataDescriptor) = "_" * eldd.operatorname
 
-load_el(geometry, dimension, system_size, α, operatorname, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(ELDataDescriptor(operatorname, geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_el(operatorname, edd)
+    load_el(operatorname, model, diagtype[, location])
+"""
+load_el(args...; kwargs...) = load(ELDataDescriptor(args...; kwargs...))
 
 ## functions
 
