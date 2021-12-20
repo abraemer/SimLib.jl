@@ -56,10 +56,10 @@ The default save directory is "ipr".
 `Statistics.mean` and `Statistics.std` are overloaded to act on the first dimension to conveniently compute
 mean LSR and its variance.
 """
-struct IPRData <: ED.EDDerivedData
+struct IPRData{N} <: ED.EDDerivedData
     descriptor::IPRDataDescriptor
     # [state, shot, h, rho]
-    data::FArray{4}
+    data::FArray{N}
 end
 
 IPRData(iprdd::IPRDataDescriptor) = IPRData(iprdd, FArray{4}(undef, ED.ed_size(iprdd), iprdd.shots, length(iprdd.fields), length(iprdd.ρs)))
@@ -97,16 +97,16 @@ end
 
 InverseParticipationRatio() = IPRTask(nothing)
 
-function ED.initialize!(task::IPRTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
+function ED.initialize!(task::IPRTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(Float64, spectral_size)
 end
 
-function ED.compute_task!(task::IPRTask, ρindex, shot, fieldindex, evals, evecs)
-    ipr!(view(task.data, 1:length(evals), shot, fieldindex, ρindex), evecs)
+function ED.compute_task!(task::IPRTask, evals, evecs, inds...)
+    ipr!(view(task.data, 1:length(evals), inds...), evecs)
 end
 
-function ED.failed_task!(task::IPRTask, ρindex, shot, fieldindex)
-    task.data[:, shot, fieldindex, ρindex] .= NaN64
+function ED.failed_task!(task::IPRTask, inds...)
+    task.data[:, inds...] .= NaN64
 end
 
 function ED.assemble(task::IPRTask, edd)

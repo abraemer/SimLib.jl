@@ -44,28 +44,28 @@ OperatorDiagonal(opname, operator) = OPDiagTask{Val(ishermitian(operator)), type
 
 const HermitianOPDiagTask = OPDiagTask{Val(true)}
 
-function ED.initialize!(task::OPDiagTask, edd, arrayconstructor)
-    task.data = arrayconstructor(ComplexF64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
+function ED.initialize!(task::OPDiagTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(ComplexF64, spectral_size)
 end
 
-function ED.initialize!(task::HermitianOPDiagTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
+function ED.initialize!(task::HermitianOPDiagTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(Float64, spectral_size)
 end
 
-function ED.compute_task!(task::HermitianOPDiagTask, ρindex, shot, fieldindex, evals, evecs)
+function ED.compute_task!(task::HermitianOPDiagTask, evals, evecs, inds...)
     for (i, vec) in enumerate(eachcol(evecs))
-        task.data[i, shot, fieldindex, ρindex] = real(dot(vec, task.op, vec))
+        task.data[i, inds...] = real(dot(vec, task.op, vec))
     end
 end
 
-function ED.compute_task!(task::OPDiagTask, ρindex, shot, fieldindex, evals, evecs)
+function ED.compute_task!(task::OPDiagTask, evals, evecs, inds...)
     for (i, vec) in enumerate(eachcol(evecs))
-        task.data[i, shot, fieldindex, ρindex] = dot(vec, task.op, vec)
+        task.data[i, inds...] = dot(vec, task.op, vec)
     end
 end
 
-function ED.failed_task!(task::OPDiagTask, ρindex, shot, fieldindex)
-    task.data[:, shot, fieldindex, ρindex] .= NaN64
+function ED.failed_task!(task::OPDiagTask, inds...)
+    task.data[:, inds...] .= NaN64
 end
 
 function ED.assemble(task::OPDiagTask, edd)
