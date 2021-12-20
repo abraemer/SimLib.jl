@@ -21,15 +21,19 @@ LevelDataDescriptor(args...; kwargs...) = LevelDataDescriptor(EDDataDescriptor(a
 
 ### Data obj
 
-struct LevelData <: ED.EDDerivedData
+struct LevelData{N} <: ED.EDDerivedData
     descriptor::LevelDataDescriptor
-    data::FArray{4}
+    data::FArray{N}
 end
 
 ED._default_folder(::LevelDataDescriptor) = "levels"
 #_filename_addition(::LevelData) = "" # default
 
-load_levels(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(LevelDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_levels(edd)
+    load_levels(model[, diagtype][, location])
+"""
+load_levels(args...; kwargs...) = load(LevelDataDescriptor(args...; kwargs...))
 
 ### Task
 
@@ -39,16 +43,16 @@ end
 
 Energies() = LevelTask(nothing)
 
-function ED.initialize!(task::LevelTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
+function ED.initialize!(task::LevelTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(Float64, spectral_size)
 end
 
-function ED.compute_task!(task::LevelTask, ρindex, shot, fieldindex, evals, evecs)
-    task.data[1:length(evals), shot, fieldindex, ρindex] .= evals
+function ED.compute_task!(task::LevelTask, evals, evecs, inds...)
+    task.data[1:length(evals), inds...] .= evals
 end
 
-function ED.failed_task!(task::LevelTask, ρindex, shot, fieldindex)
-    task.data[:, shot, fieldindex, ρindex] .= NaN64
+function ED.failed_task!(task::LevelTask, inds...)
+    task.data[:, inds...] .= NaN64
 end
 
 function ED.assemble(task::LevelTask, edd)

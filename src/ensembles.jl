@@ -56,18 +56,20 @@ The indices mean:
 
 The default save directory is "ensemble".
 """
-struct EnsembleData <: ED.EDDerivedData
+struct EnsembleData{N} <: ED.EDDerivedData
     descriptor::EnsembleDataDescriptor
     # [shot, h, rho, ensemble]
     # ensemble: 1=microcanonical, 2=canonical, 3=diag
-    data::Array{Float64,4}
+    data::Array{Float64,N}
 end
+
+_data_indices(arr) = CartesianIndices(axes(arr)[2:end])
 
 function Base.getproperty(ensdata::EnsembleData, s::Symbol)
     if hasfield(typeof(ensdata), s)
         getfield(ensdata, s)
     elseif haskey(ENSEMBLE_INDICES, s)
-        @view ensdata.data[:,:,:,ENSEMBLE_INDICES[s]]
+        @view ensdata.data[_data_indices(ensdata.data), ENSEMBLE_INDICES[s]]
     else
         getproperty(ensdata.descriptor, s)
     end
@@ -123,7 +125,7 @@ function _diagonal!(out, eon, eev, ignored=nothing)
 end
 
 function ensemble_predictions(evals, eon, eev)
-    ensemble_data = zeros(Float64, size(eon)[2:4]..., 3)
+    ensemble_data = zeros(Float64, size(eon)[2:end]..., 3)
     ensemble_predictions!(ensemble_data, evals, eon, eev)
     return ensemble_data
 end
@@ -133,9 +135,10 @@ function ensemble_predictions!(ensemble_data, evals, eon, eev)
         eon = abs2.(eon)
         logmsg("Ensemble prediction: Got amplitudes -> squaring.")
     end
-    _microcan!( @view(ensemble_data[:,:,:,1]), eon, eev, evals)
-    _canonical!(@view(ensemble_data[:,:,:,2]), eon, eev, evals)
-    _diagonal!( @view(ensemble_data[:,:,:,3]), eon, eev, evals) # evals not needed here but looks nicer ;)
+    I = _data_indices(evals)
+    _microcan!( @view(ensemble_data[I, 1]), eon, eev, evals)
+    _canonical!(@view(ensemble_data[I, 2]), eon, eev, evals)
+    _diagonal!( @view(ensemble_data[I, 3]), eon, eev, evals) # evals not needed here but looks nicer ;)
 end
 
 function ensemble_predictions(levels::LevelData, eon::EONData, eev::OPDiagData)

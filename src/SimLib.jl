@@ -18,7 +18,7 @@ const Maybe{T} = Union{Missing, T} where T
 include("general.jl")
 include("data.jl")
 include("positions.jl")
-include("ed/ed.jl")
+include("exact_diagonalization/exact_diagonalization.jl")
 include("eigenstate_occupation.jl")
 include("eigenstate_locality.jl")
 include("levels.jl")

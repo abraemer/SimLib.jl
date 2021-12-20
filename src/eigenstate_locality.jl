@@ -16,21 +16,24 @@ struct ELDataDescriptor{T} <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
 end
 
-
 ELDataDescriptor(operatorname::String, args...; kwargs...) = ELDataDescriptor(nothing, operatorname, args...; kwargs...)
 ELDataDescriptor(operator, operatorname::String, args...; kwargs...) = ELDataDescriptor(operator, operatorname, EDDataDescriptor(args...; kwargs...))
 
 ### Data obj
 
-struct ELData{T} <: ED.EDDerivedData
+struct ELData{T, N} <: ED.EDDerivedData
     descriptor::ELDataDescriptor{T}
-    data::Array{Float64, 4}
+    data::Array{Float64, N}
 end
 
 ED._default_folder(::ELDataDescriptor) = "locality"
 ED._filename_addition(eldd::ELDataDescriptor) = "_" * eldd.operatorname
 
-load_el(geometry, dimension, system_size, α, operatorname, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(ELDataDescriptor(operatorname, geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_el(operatorname, edd)
+    load_el(operatorname, model, diagtype[, location])
+"""
+load_el(args...; kwargs...) = load(ELDataDescriptor(args...; kwargs...))
 
 ## functions
 
@@ -59,16 +62,16 @@ end
 EigenstateLocality(operatorname, operator) = ELTask(operatorname, operator, nothing)
 
 
-function ED.initialize!(task::ELTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, ED.ed_size(edd)-1, edd.shots, length(edd.fields), length(edd.ρs))
+function ED.initialize!(task::ELTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(Float64, spectral_size-1)
 end
 
-function ED.compute_task!(task::ELTask, ρindex, shot, fieldindex, evals, evecs)
-    eigenstatelocality!(view(task.data, 1:length(evals)-1, shot, fieldindex, ρindex), evals, evecs, task.operator)
+function ED.compute_task!(task::ELTask, evals, evecs, inds...)
+    eigenstatelocality!(view(task.data, 1:length(evals)-1, inds...), evals, evecs, task.operator)
 end
 
-function ED.failed_task!(task::ELTask, ρindex, shot, fieldindex)
-    task.data[:, shot, fieldindex, ρindex] .= NaN64
+function ED.failed_task!(task::ELTask, inds...)
+    task.data[:, inds...] .= NaN64
 end
 
 function ED.assemble(task::ELTask, edd)

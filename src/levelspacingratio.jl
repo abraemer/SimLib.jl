@@ -4,6 +4,7 @@ import ..ED
 using ..Levels
 using ..SimLib
 using ..SimLib: FArray
+using SharedArrays: sdata
 
 import Statistics
 
@@ -52,10 +53,10 @@ The default save directory is "lsr".
 `Statistics.mean` and `Statistics.std` are overloaded to act on the first dimension to conveniently compute
 mean LSR and its variance.
 """
-struct LSRData <: ED.EDDerivedData
+struct LSRData{N} <: ED.EDDerivedData
     descriptor::LSRDataDescriptor
     # [dummy, shot, h, rho]
-    data::FArray{4}
+    data::FArray{N}
 end
 
 LSRData(lsrdd::LSRDataDescriptor) = LSRData(lsrdd, FArray{4}(undef, ED.ed_size(lsrdd), lsrdd.shots, length(lsrdd.fields), length(lsrdd.ρs)))
@@ -64,7 +65,11 @@ LSRData(lsrdd::LSRDataDescriptor) = LSRData(lsrdd, FArray{4}(undef, ED.ed_size(l
 
 ED._default_folder(::LSRDataDescriptor) = "lsr"
 
-load_lsr(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(LSRDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_lsr(edd)
+    load_lsr(model[, diagtype][, location])
+"""
+load_lsr(args...; kwargs...) = load(LSRDataDescriptor(args...; kwargs...))
 
 function center_indices(L, center_region)
     cutoff = floor(Int, (L*(1-center_region)/2))
@@ -109,20 +114,20 @@ end
 
 LevelSpacingRatio() = LSRTask(nothing)
 
-function ED.initialize!(task::LSRTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, ED.ed_size(edd)-2, edd.shots, length(edd.fields), length(edd.ρs))
+function ED.initialize!(task::LSRTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(Float64, spectral_size-2)
 end
 
-function ED.compute_task!(task::LSRTask, ρindex, shot, fieldindex, evals, evecs)
-    task.data[1:length(evals)-2, shot, fieldindex, ρindex] .= levelspacingratio(evals)
+function ED.compute_task!(task::LSRTask, evals, evecs, inds...)
+    task.data[1:length(evals)-2, inds...] .= levelspacingratio(evals)
 end
 
-function ED.failed_task!(task::LSRTask, ρindex, shot, fieldindex)
-    task.data[:, shot, fieldindex, ρindex] .= NaN64
+function ED.failed_task!(task::LSRTask, inds...)
+    task.data[:, inds...] .= NaN64
 end
 
 function ED.assemble(task::LSRTask, edd)
-    LSRData(LSRDataDescriptor(edd), task.data)
+    LSRData(LSRDataDescriptor(edd), sdata(task.data))
 end
 
 

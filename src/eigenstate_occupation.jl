@@ -22,15 +22,19 @@ EONDataDescriptor(state, statename::String, args...; kwargs...) = EONDataDescrip
 
 ### Data obj
 
-struct EONData{T} <: ED.EDDerivedData
+struct EONData{T, N} <: ED.EDDerivedData
     descriptor::EONDataDescriptor{T}
-    data::Array{Float64, 4}
+    data::Array{Float64, N}
 end
 
 ED._default_folder(::EONDataDescriptor) = "eon"
 ED._filename_addition(opdd::EONDataDescriptor) = "_" * opdd.statename
 
-load_eon(geometry, dimension, system_size, α, statename, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EONDataDescriptor(statename, geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_eon(statename, edd)
+    load_eon(statename, model[, diagtype] [, location])
+"""
+load_eon(args...; kwargs...) = load(EONDataDescriptor(args...; kwargs...))
 
 ### Task
 
@@ -43,18 +47,18 @@ end
 EigenstateOccupation(statename, state) = EONTask(statename, state, nothing)
 
 
-function ED.initialize!(task::EONTask, edd, arrayconstructor)
-    task.data = arrayconstructor(Float64, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
+function ED.initialize!(task::EONTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(Float64, spectral_size)
 end
 
-function ED.compute_task!(task::EONTask, ρindex, shot, fieldindex, evals, evecs)
+function ED.compute_task!(task::EONTask, evals, evecs, inds...)
     for (i, vec) in enumerate(eachcol(evecs))
-        task.data[i, shot, fieldindex, ρindex] = abs2(dot(vec, task.state))
+        task.data[i, inds...] = abs2(dot(vec, task.state))
     end
 end
 
-function ED.failed_task!(task::EONTask, ρindex, shot, fieldindex)
-    task.data[:, shot, fieldindex, ρindex] .= NaN64
+function ED.failed_task!(task::EONTask, inds...)
+    task.data[:, inds...] .= NaN64
 end
 
 function ED.assemble(task::EONTask, edd)

@@ -19,23 +19,26 @@ struct HCEDataDescriptor <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
 end
 
-
-
-HCEDataDescriptor(L, symm, args...; kwargs...) = HCEDataDescriptor(L, symm, EDDataDescriptor(args...; kwargs...))
+HCEDataDescriptor(L, args...; kwargs...) = HCEDataDescriptor(L, true, args...; kwargs...)
+HCEDataDescriptor(L, symm::Bool, args...; kwargs...) = HCEDataDescriptor(L, symm, EDDataDescriptor(args...; kwargs...))
 
 
 
 ### Data obj
 
-struct HCEData <: ED.EDDerivedData
+struct HCEData{N} <: ED.EDDerivedData
     descriptor::HCEDataDescriptor
-    data::FArray{5}
+    data::FArray{N}
 end
 
 ED._default_folder(::HCEDataDescriptor) = "entropy"
 ED._filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm ? "_symm" : "")
 
-load_entropy(geometry, dimension, system_size, α, L, symm=true, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(HCEDataDescriptor(L, symm, geometry, dimension, system_size, α; prefix, suffix))
+"""
+    load_entropy(L[, symm], edd)
+    load_entropy(L[, symm], model[, diagtype][, location])
+"""
+load_endtropy(args...; kwargs...) =  load(HCEDataDescriptor(args...; kwargs...))
 
 
 ## Functions
@@ -85,35 +88,30 @@ end
 
 ### Task
 
-mutable struct HalfChainEntropyTask <: ED.EDTask
-    L::Maybe{Int}
+mutable struct HalfChainEntropyTask{S} <: ED.EDTask
+    L::Int
     symm::Bool
-    entropy_strategy
+    entropy_strategy::S
     data
 end
 
 ## ToDo: This always symmetrizes over the chain right now.
 
-HalfChainEntropyZBlock(L=missing) = HalfChainEntropyTask(L, true, nothing, nothing)
-HalfChainEntropyZBlock(; L=missing) = HalfChainEntropyZBlock(L)
+HalfChainEntropyZBlock(basis::SymmetrizedBasis, L=missing) = HalfChainEntropyTask(L, true, SymmZBlockEntanglementEntropy(basis.basis, L), nothing)
+HalfChainEntropyZBlock(; L=missing, basis) = HalfChainEntropyZBlock(basis, div(basis.basis.N,2))
 
-function ED.initialize!(task::HalfChainEntropyTask, edd, arrayconstructor)
-    if ismissing(task.L)
-        ## TODO this is not universal! basis might also be a ZBlockBasis directly...
-        task.L = div(edd.basis.basis.N, 2) # half-chain is default
-    end
-    task.entropy_strategy = SymmZBlockEntanglementEntropy(edd.basis.basis, task.L)
-    task.data = arrayconstructor(Float64, task.entropy_strategy.size, ED.ed_size(edd), edd.shots, length(edd.fields), length(edd.ρs))
+function ED.initialize!(task::HalfChainEntropyTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(Float64, task.entropy_strategy.size, spectral_size)
 end
 
-function ED.compute_task!(task::HalfChainEntropyTask, ρindex, shot, fieldindex, evals, evecs)
+function ED.compute_task!(task::HalfChainEntropyTask, evals, evecs, inds...)
     for (i, ψ) in enumerate(eachcol(evecs))
-        entanglement_entropy!(view(task.data, :, i, shot, fieldindex, ρindex), task.entropy_strategy, ψ)
+        entanglement_entropy!(view(task.data, :, i, inds...), task.entropy_strategy, ψ)
     end
 end
 
-function ED.failed_task!(task::HalfChainEntropyTask, ρindex, shot, fieldindex)
-    task.data[:, :, shot, fieldindex, ρindex] .= NaN64
+function ED.failed_task!(task::HalfChainEntropyTask, inds...)
+    task.data[:, :, inds...] .= NaN64
 end
 
 function ED.assemble(task::HalfChainEntropyTask, edd)

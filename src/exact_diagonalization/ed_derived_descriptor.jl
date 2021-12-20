@@ -31,31 +31,6 @@ end
 function SimLib._filename(eddd::EDDerivedDataDescriptor)
     return joinpath(
         _default_folder(eddd),
-        filename_base(eddd.geometry, eddd.dimension, eddd.system_size, eddd.α) * _filename_addition(eddd))
+        model_fileprefix(eddd.model) * _filename_addition(eddd))
 end
 filename_base(geometry, dim, N, α) = @sprintf("%s_%id_alpha_%.1f_N_%02i", geometry, dim, α, N)
-
-
-abstract type EDTask end
-
-# output arrays
-function initialize! end
-
-# can preallocate compute space
-# Note: This needs to wrap the Task in an additional struct
-# The additional memory may not be a part of the same struct
-# otherwise the code breaks in a multithreaded (not multiprocessed) setting
-# as all threads share the same memory location for their temporary results
-initialize_local(task::EDTask) = task
-
-# task, ρindex, shot, fieldindex, eigen
-function compute_task! end
-
-# task, ρindex, shot, fieldindex
-function failed_task! end
-
-# task, EDDataDescriptor -> Data object
-function assemble end
-
-_array_constructor(type, dims...) = fill(convert(type, NaN), dims)
-_sharedarray_constructor(type, dims...) = fill!(SharedArray{type}(dims), NaN)
