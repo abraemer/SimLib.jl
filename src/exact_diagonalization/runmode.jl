@@ -46,19 +46,20 @@ struct Parallel <: RunMode
     Nprocs::Int
     dosetup::Bool
     NBLASthreads::Int
-    function Parallel(Nprocs, dosetup=true, NBLASthreads=1)
+    useMKL::Bool
+    function Parallel(Nprocs, dosetup=true, NBLASthreads=1, useMKL=false)
         new(Nprocs, dosetup, NBLASthreads)
     end
 end
-function Parallel(; Nprocs=length(Sys.cpu_info()), dosetup=true, NBLASthreads=1)
-    Parallel(Nprocs, dosetup, NBLASthreads)
+function Parallel(; Nprocs=length(Sys.cpu_info()), dosetup=true, NBLASthreads=1, useMKL=false)
+    Parallel(Nprocs, dosetup, NBLASthreads, useMKL)
 end
 
-setup(p::Parallel) = p.dosetup && _initialize_procs(p.Nprocs, p.NBLASthreads)
+setup(p::Parallel) = p.dosetup && _initialize_procs(p.Nprocs, p.NBLASthreads, p.useMKL)
 num_workers(p::Parallel) = p.Nprocs
 array_initializer(::Parallel) = _sharedarray_constructor
 
-function _initialize_procs(total, num_BLAS_threads)
+function _initialize_procs(total, num_BLAS_threads, useMKL)
     logmsg("Initialzing worker processes")
     to_add = total
     if workers() != [1]
@@ -72,6 +73,9 @@ function _initialize_procs(total, num_BLAS_threads)
         import Pkg
         Pkg.activate(".")
         using SimLib, LinearAlgebra
+        if $useMKL
+            @everywhere using MKL
+        end
         let blas_threads = $num_BLAS_threads
             logmsg("BLAS threads = $blas_threads")
             LinearAlgebra.BLAS.set_num_threads(blas_threads)
