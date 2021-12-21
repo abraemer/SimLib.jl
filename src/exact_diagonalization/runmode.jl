@@ -75,6 +75,7 @@ function _initialize_procs(total, num_BLAS_threads, useMKL)
         using SimLib, LinearAlgebra
         if $useMKL
             using MKL
+            logmsg("BLAS config: $(LinearAlgebra.BLAS.get_config())")
         end
         let blas_threads = $num_BLAS_threads
             logmsg("BLAS threads = $blas_threads")
