@@ -1,4 +1,4 @@
-function logmsg(msg...; doflush=true)
+function logmsg(msg...; doflush=false)
     println("[",now(), "]", msg...)
     doflush && flush(stdout)
 end
