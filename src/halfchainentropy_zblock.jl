@@ -97,8 +97,8 @@ end
 
 ## ToDo: This always symmetrizes over the chain right now.
 
-HalfChainEntropyZBlock(basis::SymmetrizedBasis, L=missing) = HalfChainEntropyTask(L, true, SymmZBlockEntanglementEntropy(basis.basis, L), nothing)
-HalfChainEntropyZBlock(; L=missing, basis) = HalfChainEntropyZBlock(basis, div(basis.basis.N,2))
+HalfChainEntropyZBlock(basis::SymmetrizedBasis, L=div(basis.basis.N,2)) = HalfChainEntropyTask(L, true, SymmZBlockEntanglementEntropy(basis.basis, L), nothing)
+HalfChainEntropyZBlock(; basis, L=div(basis.basis.N,2)) = HalfChainEntropyZBlock(basis, L)
 
 function ED.initialize!(task::HalfChainEntropyTask, arrayconstructor, spectral_size)
     task.data = arrayconstructor(Float64, task.entropy_strategy.size, spectral_size)
