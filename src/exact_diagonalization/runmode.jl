@@ -74,7 +74,7 @@ function _initialize_procs(total, num_BLAS_threads, useMKL)
         Pkg.activate(".")
         using SimLib, LinearAlgebra
         if $useMKL
-            @everywhere using MKL
+            using MKL
         end
         let blas_threads = $num_BLAS_threads
             logmsg("BLAS threads = $blas_threads")
