@@ -38,6 +38,7 @@ ED._filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm 
     load_entropy(L[, symm], edd)
     load_entropy(L[, symm], model[, diagtype][, location])
 """
+
 load_entropy(args...; kwargs...) =  load(HCEDataDescriptor(args...; kwargs...))
 
 
@@ -99,6 +100,7 @@ end
 
 HalfChainEntropyZBlock(basis::SymmetrizedBasis, L=div(basis.basis.N,2)) = HalfChainEntropyTask(L, true, SymmZBlockEntanglementEntropy(basis.basis, L), nothing)
 HalfChainEntropyZBlock(; basis, L=div(basis.basis.N,2)) = HalfChainEntropyZBlock(basis, L)
+
 
 function ED.initialize!(task::HalfChainEntropyTask, arrayconstructor, spectral_size)
     task.data = arrayconstructor(Float64, task.entropy_strategy.size, spectral_size)

@@ -25,6 +25,7 @@ function _compute_core!(tasks, diagtype, model, parameter_chunk)
     do_parameters(model, parameter_chunk) do parameter_index, H
         try
             logmsg("Starting index $(parameter_index) of $(parameter_chunk)")
+
             diagtime = 0.0
             tasktime = 0.0
             start = time()
