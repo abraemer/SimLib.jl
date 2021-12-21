@@ -25,9 +25,18 @@ function _compute_core!(tasks, diagtype, model, parameter_chunk)
     do_parameters(model, parameter_chunk) do parameter_index, H
         try
             logmsg("Starting index $(parameter_index) of $(parameter_chunk)")
+
+            diagtime = 0.0
+            tasktime = 0.0
+            start = time()
             diagonalize!(H, diagtype) do diag_index, eigvals, eigvecs
+                diagtime += time() - start
+                start = time()
                 compute_task!.(tasks, Ref(eigvals), Ref(eigvecs), Ref(diag_index), Ref(parameter_index))
+                tasktime += time() - start
+                start = time()
             end
+            logmsg("Diagonalization took TDIAG=$(round(diagtime; digits=2))s and tasks took TTASK=$(round(tasktime; digits=2))s.")
         catch e;
             logmsg("Error during diagonalization occured for index $parameter_index : $e")
             display(stacktrace(catch_backtrace()))

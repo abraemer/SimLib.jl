@@ -19,7 +19,7 @@ struct HCEDataDescriptor <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
 end
 
-HCEDataDescriptor(L, args...; kwargs...) = HCEDataDescriptor(L, true, args...; kwargs...)
+HCEDataDescriptor(L, args...; kwargs...) = HCEDataDescriptor(L, true, EDDataDescriptor(args...; kwargs...))
 HCEDataDescriptor(L, symm::Bool, args...; kwargs...) = HCEDataDescriptor(L, symm, EDDataDescriptor(args...; kwargs...))
 
 
@@ -38,7 +38,8 @@ ED._filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm 
     load_entropy(L[, symm], edd)
     load_entropy(L[, symm], model[, diagtype][, location])
 """
-load_endtropy(args...; kwargs...) =  load(HCEDataDescriptor(args...; kwargs...))
+
+load_entropy(args...; kwargs...) =  load(HCEDataDescriptor(args...; kwargs...))
 
 
 ## Functions
@@ -97,8 +98,9 @@ end
 
 ## ToDo: This always symmetrizes over the chain right now.
 
-HalfChainEntropyZBlock(basis::SymmetrizedBasis, L=missing) = HalfChainEntropyTask(L, true, SymmZBlockEntanglementEntropy(basis.basis, L), nothing)
-HalfChainEntropyZBlock(; L=missing, basis) = HalfChainEntropyZBlock(basis, div(basis.basis.N,2))
+HalfChainEntropyZBlock(basis::SymmetrizedBasis, L=div(basis.basis.N,2)) = HalfChainEntropyTask(L, true, SymmZBlockEntanglementEntropy(basis.basis, L), nothing)
+HalfChainEntropyZBlock(; basis, L=div(basis.basis.N,2)) = HalfChainEntropyZBlock(basis, L)
+
 
 function ED.initialize!(task::HalfChainEntropyTask, arrayconstructor, spectral_size)
     task.data = arrayconstructor(Float64, task.entropy_strategy.size, spectral_size)
