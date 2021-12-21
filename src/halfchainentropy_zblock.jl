@@ -19,7 +19,7 @@ struct HCEDataDescriptor <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
 end
 
-HCEDataDescriptor(L, args...; kwargs...) = HCEDataDescriptor(L, true, args...; kwargs...)
+HCEDataDescriptor(L, args...; kwargs...) = HCEDataDescriptor(L, true, EDDataDescriptor(args...; kwargs...))
 HCEDataDescriptor(L, symm::Bool, args...; kwargs...) = HCEDataDescriptor(L, symm, EDDataDescriptor(args...; kwargs...))
 
 
