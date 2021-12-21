@@ -51,7 +51,7 @@ struct Parallel <: RunMode
     end
 end
 function Parallel(; Nprocs=length(Sys.cpu_info()), dosetup=true, NBLASthreads=1)
-    new(Nprocs, dosetup, NBLASthreads)
+    Parallel(Nprocs, dosetup, NBLASthreads)
 end
 
 setup(p::Parallel) = p.dosetup && _initialize_procs(p.Nprocs, p.NBLASthreads)
