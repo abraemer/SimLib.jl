@@ -24,6 +24,7 @@ include("ed_derived_descriptor.jl")
 include("runmode.jl")
 include("models/models.jl")
 include("ed_core.jl")
+include("timetask.jl")
 
 @reexport using .EDModels
 
