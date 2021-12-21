@@ -38,7 +38,7 @@ ED._filename_addition(hcedd::HCEDataDescriptor) = "-l_$(hcedd.L)" * (hcedd.symm 
     load_entropy(L[, symm], edd)
     load_entropy(L[, symm], model[, diagtype][, location])
 """
-load_endtropy(args...; kwargs...) =  load(HCEDataDescriptor(args...; kwargs...))
+load_entropy(args...; kwargs...) =  load(HCEDataDescriptor(args...; kwargs...))
 
 
 ## Functions
