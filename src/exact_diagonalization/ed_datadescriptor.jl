@@ -2,18 +2,15 @@
 """
     struct EDDataDescriptor
 
-The important bits of information needed to specify for performing exact diagonalization on disordered XXZ Heisenberg models:
- - geometry
- - dimension
- - system_size
- - α
- - shots
- - densities ρs
- - field strengths
- - scaling of field strengths
- - symmetries to respect
-For `load`ing data only the first 4 fields are required
-Can also be constructed from a `PositionDataDescriptor` by supplying a the missing bits (α, fields).
+    EDDataDescriptor(model[, diagtype][, pathdata]; suffix, prefix)
+
+The important bits of information needed to specify for performing exact diagonalization on spin models:
+ - `model`: See [`EDModels`](@ref)
+ - `diagtype`: See [`DiagonalizationType`](@ref)
+ - `pathdata`: `SaveLocation` for the results
+For `load`ing data only the first field is required!
+
+Note: This datastructure forwards properties of `model`.
 """
 struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
     model
@@ -32,37 +29,7 @@ end
 # constructor for easier loading
 EDDataDescriptor(model, pathdata::SaveLocation=SaveLocation(); kwargs...) = EDDataDescriptor(model, missing, pathdata; kwargs...)
 
-# _default_basis(N) = symmetrized_basis(N, Flip(N), 0)
-# # unpack PositionData
-# EDDataDescriptor(posdata::PositionData, args...; kwargs...) = EDDataDescriptor(descriptor(posdata), args...; kwargs...)
-
-# # handle construction from PositionDataDescriptor and possible location overrides
-# function EDDataDescriptor(posdata::PositionDataDescriptor, args...; pathdata=posdata.pathdata, prefix=pathdata.prefix, suffix=pathdata.suffix, kwargs...)
-#     EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, args...; ρs=posdata.ρs, shots=posdata.shots, prefix, suffix, kwargs...)
-# end
-
-# # full kwargs constructor
-# function EDDataDescriptor(geometry, dimension, system_size, α; kwargs...)
-#     EDDataDescriptor(; geometry, dimension, system_size, α, kwargs...)
-# end
-
-# function EDDataDescriptor(geometry, dimension, system_size; kwargs...)
-#     EDDataDescriptor(; geometry, dimension, system_size, kwargs...)
-# end
-
-# # full constructor
-# function EDDataDescriptor(;geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=missing, basis=_default_basis(system_size), diagtype=Full(), pathdata=SaveLocation(), prefix=pathdata.prefix, suffix=pathdata.suffix)
-#     EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, diagtype, SaveLocation(prefix, suffix))
-# end
-
-# # old positional constructor
-# EDDataDescriptor(posdata::PositionDataDescriptor, α, fields=missing, scale_fields=missing, basis=_default_basis(posdata.system_size), diagtype=Full(); prefix=posdata.pathdata.prefix, suffix=posdata.pathdata.suffix) =
-#     EDDataDescriptor(posdata.geometry, posdata.dimension, posdata.system_size, α, posdata.shots, posdata.ρs, fields, scale_fields, basis, diagtype, SaveLocation(prefix, suffix))
-
-# # function EDDataDescriptor(geometry, dimension, system_size, α, shots=missing, ρs=missing, fields=missing, scale_fields=missing, basis=_default_basis(system_size), diagtype=Full(), savelocation=SaveLocation(); prefix=savelocation.prefix, suffix=savelocation.suffix)
-# #     EDDataDescriptor(geometry, dimension, system_size, α, shots, ρs, fields, scale_fields, basis, diagtype, SaveLocation(; prefix, suffix))
-# # end
-
+# forward properties to model
 function Base.getproperty(edd::EDDataDescriptor, s::Symbol)
     if hasfield(typeof(edd), s)
         return getfield(edd, s)

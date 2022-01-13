@@ -21,7 +21,7 @@ LevelDataDescriptor(args...; kwargs...) = LevelDataDescriptor(EDDataDescriptor(a
 
 ### Data obj
 
-struct LevelData{N} <: ED.EDDerivedData
+struct LevelData{N} <: SimLib.AbstractSimpleData
     descriptor::LevelDataDescriptor
     data::FArray{N}
 end

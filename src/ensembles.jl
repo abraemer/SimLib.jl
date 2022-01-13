@@ -56,7 +56,7 @@ The indices mean:
 
 The default save directory is "ensemble".
 """
-struct EnsembleData{N} <: ED.EDDerivedData
+struct EnsembleData{N} <: SimLib.AbstractSimpleData
     descriptor::EnsembleDataDescriptor
     # [shot, h, rho, ensemble]
     # ensemble: 1=microcanonical, 2=canonical, 3=diag

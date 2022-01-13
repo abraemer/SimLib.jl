@@ -1,7 +1,7 @@
 module EON
 
 import ..ED
-using .. SimLib
+using ..SimLib
 using ..SimLib: Maybe
 using LinearAlgebra
 using SharedArrays: sdata
@@ -22,7 +22,7 @@ EONDataDescriptor(state, statename::String, args...; kwargs...) = EONDataDescrip
 
 ### Data obj
 
-struct EONData{T, N} <: ED.EDDerivedData
+struct EONData{T, N} <: SimLib.AbstractSimpleData
     descriptor::EONDataDescriptor{T}
     data::Array{Float64, N}
 end

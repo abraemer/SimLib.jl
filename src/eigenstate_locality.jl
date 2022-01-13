@@ -1,7 +1,7 @@
 module EL
 
 import ..ED
-using .. SimLib
+using ..SimLib
 using ..SimLib: Maybe
 using LinearAlgebra
 using SharedArrays: sdata
@@ -21,7 +21,7 @@ ELDataDescriptor(operator, operatorname::String, args...; kwargs...) = ELDataDes
 
 ### Data obj
 
-struct ELData{T, N} <: ED.EDDerivedData
+struct ELData{T, N} <: SimLib.AbstractSimpleData
     descriptor::ELDataDescriptor{T}
     data::Array{Float64, N}
 end

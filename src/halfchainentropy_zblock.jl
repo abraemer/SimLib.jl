@@ -2,7 +2,7 @@ module HCE_ZBlock_Module
 
 import ..ED
 using ..SimLib
-using ..SimLib: FArray, Maybe
+using ..SimLib: FArray
 using LinearAlgebra: eigvals!, Hermitian, mul!, svdvals!
 using SharedArrays: sdata
 using SpinSymmetry
@@ -26,7 +26,7 @@ HCEDataDescriptor(L, symm::Bool, args...; kwargs...) = HCEDataDescriptor(L, symm
 
 ### Data obj
 
-struct HCEData{N} <: ED.EDDerivedData
+struct HCEData{N} <: SimLib.AbstractSimpleData
     descriptor::HCEDataDescriptor
     data::FArray{N}
 end

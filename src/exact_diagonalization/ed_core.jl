@@ -1,7 +1,20 @@
 
 
 ## main function
+"""
+    run_ed(descriptor, tasks...; runmode)
+    run_ed(descriptor, tasks, runmode)
 
+Main entry to the exact diagonalization functionality.
+
+# Parameters
+ - `descriptor`: A [`EDDataDescriptor`](@ref). This struct describes what should be diagonalized and how.
+ - `tasks`: A vector of [`EDTask`](@ref)s. What to compute from the diagonalized Hamiltonians.
+ - `runmode`: How to parallelize the task. See [`RunMode`](@ref).
+
+# Returns
+A vector of [`EDDerivedData`](@ref)s each corresponding to a task. Note that saving the data is on the caller!
+"""
 run_ed(descriptor, tasks...; runmode) = run_ed(descriptor, tasks, runmode)
 
 function run_ed(descriptor, tasks, runmode)

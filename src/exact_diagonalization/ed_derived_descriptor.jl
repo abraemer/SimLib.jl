@@ -1,10 +1,16 @@
-abstract type EDDerivedDataDescriptor <: SimLib.AbstractDataDescriptor end
+"""
+    abstract EDDerivedDataDescriptor <: SimLib.AbstractDataDescriptor
 
-function Base.:(==)(eddd1::EDDerivedDataDescriptor, eddd2::EDDerivedDataDescriptor)
-    let d1 = eddd1.derivedfrom, d2 = eddd2.derivedfrom
-        all(getfield(d1, f) == getfield(d2, f) for f in [:geometry, :dimension, :α, :shots, :ρs, :fields, :scale_fields, :basis])
-    end
-end
+Supertype for descriptors of quantities that derive from exact diagonalization.
+
+## Interface
+ - Subtypes must have a field `derivedfrom` holding the `EDDataDescriptor` they derived from
+ - Subtypes must implement [`_default_folder`](@ref) or [`SimLib._filename`](@ref)
+ - Subtypes may implement [`_filename_addition`](@ref)
+
+This automatically forwards fields not found in the subtype to the `EDDataDescriptor`.
+"""
+abstract type EDDerivedDataDescriptor <: SimLib.AbstractDataDescriptor end
 
 # simply forward all properties, that are directly part of the descriptor
 function Base.getproperty(eddd::EDDerivedDataDescriptor, p::Symbol)
@@ -15,22 +21,22 @@ function Base.getproperty(eddd::EDDerivedDataDescriptor, p::Symbol)
     end
 end
 
-abstract type EDDerivedData <: SimLib.AbstractSimpleData end
+"""
+    _filename(::EDDerivedDataDescriptor)
 
-function _default_folder end
-_filename_addition(::EDDerivedDataDescriptor) = ""
-
-function Base.getproperty(eddd::EDDerivedData, s::Symbol)
-    if hasfield(typeof(eddd), s)
-        return getfield(eddd, s)
-    else
-        return getproperty(getfield(eddd, :descriptor), s)
-    end
-end
-
+Filename consists of a default folder for the quantity followed by a filename given by the model's parameters
+and possible some addition from the quantity.
+"""
 function SimLib._filename(eddd::EDDerivedDataDescriptor)
     return joinpath(
         _default_folder(eddd),
         model_fileprefix(eddd.model) * _filename_addition(eddd))
 end
-filename_base(geometry, dim, N, α) = @sprintf("%s_%id_alpha_%.1f_N_%02i", geometry, dim, α, N)
+
+"""
+    _default_folder
+
+Return default folder to store results for the quantity. E.g. "lsr" for level-spacing ratio.
+"""
+function _default_folder end
+_filename_addition(::EDDerivedDataDescriptor) = ""

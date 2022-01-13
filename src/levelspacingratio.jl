@@ -53,7 +53,7 @@ The default save directory is "lsr".
 `Statistics.mean` and `Statistics.std` are overloaded to act on the first dimension to conveniently compute
 mean LSR and its variance.
 """
-struct LSRData{N} <: ED.EDDerivedData
+struct LSRData{N} <: SimLib.AbstractSimpleData
     descriptor::LSRDataDescriptor
     # [dummy, shot, h, rho]
     data::FArray{N}

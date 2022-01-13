@@ -22,7 +22,7 @@ OPDiagDataDescriptor(op, opname::String, args...; kwargs...) = OPDiagDataDescrip
 
 ### Data obj
 
-struct OPDiagData{T} <: ED.EDDerivedData
+struct OPDiagData{T} <: SimLib.AbstractSimpleData
     descriptor::OPDiagDataDescriptor
     data::T
 end

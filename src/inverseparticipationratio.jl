@@ -13,20 +13,9 @@ export ipr, inverse_participation_ratio, IPRData, IPRDataDescriptor, load_ipr, I
 ## Data structure
 
 """
-    struct IPRDataDescriptor
+    struct IPRDataDescriptor <: ED.EDDerivedDataDescriptor
 
-Carries the information to construct a [`EDDataDescriptor`](!ref) object.
- - geometry
- - dimension
- - system_size
- - α
- - shots
- - densities ρs
- - field strengths
- - scaling of field strengths
- - symmetries to respect
-For `load`ing data only the first 4 fields are required.
-Can also be constructed from a `PositionDataDescriptor` by supplying a the missing bits (α, fields).
+See [`EDDataDescriptor`](!ref) and [`EDDerivedDataDescriptor`](!ref).
 """
 struct IPRDataDescriptor <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
@@ -44,21 +33,15 @@ Usually |i⟩ is just the z-basis and then the IPR tells a story of localization
 IPR = 2^N for maximally entangled states
 IPR = 1 for maximally localized states
 
-# Index order
-The indices mean:
- - i (as in IPR(|ϕᵢ⟩))
- - shot index
- - field index
- - density ρ
+The first dimension hold the participation ratio of the i-th eigenstate IPR(|ϕᵢ⟩).
 
 The default save directory is "ipr".
 
 `Statistics.mean` and `Statistics.std` are overloaded to act on the first dimension to conveniently compute
 mean LSR and its variance.
 """
-struct IPRData{N} <: ED.EDDerivedData
+struct IPRData{N} <: SimLib.AbstractSimpleData
     descriptor::IPRDataDescriptor
-    # [state, shot, h, rho]
     data::FArray{N}
 end
 
