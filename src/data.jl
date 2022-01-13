@@ -53,7 +53,10 @@ abstract type AbstractSimpleData <: AbstractData end
 data(data::AbstractSimpleData) = data.data
 Base.getindex(sdata::AbstractSimpleData, inds...) = getindex(data(sdata), inds...)
 Base.setindex!(sdata::AbstractSimpleData, args...) = setindex!(data(sdata), args...)
-
+Base.size(sdata::AbstractSimpleData) = size(data(sdata))
+Base.size(sdata::AbstractSimpleData, dim) = size(data(sdata), dim)
+Base.axes(sdata::AbstractSimpleData) = axes(data(sdata))
+Base.axes(sdata::AbstractSimpleData, dim) = axes(data(sdata), dim)
 
 """
     datapath(dataOrDesc)
