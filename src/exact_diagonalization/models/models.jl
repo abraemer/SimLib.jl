@@ -8,7 +8,7 @@ using Printf: @sprintf
 using XXZNumerics
 
 export parameter_dims, initialize_model!, split_workload, do_parameters, model_name, model_fileprefix
-export RandomPositionsXXZWithXField
+export RandomPositionsXXZWithXField, RandomPositionsXXZWithDegeneracyLifted
 
 abstract type Model end
 
@@ -56,6 +56,7 @@ Return a nice name that could prefix a file with data derived from this model.
 function model_fileprefix end
 
 include("Jxxz_x.jl")
+include("Jxxz_Jz.jl")
 #include("xxz_hx.jl")
 
 end #module
