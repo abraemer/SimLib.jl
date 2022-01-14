@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.0
+# v0.17.4
 
 using Markdown
 using InteractiveUtils
@@ -68,6 +68,9 @@ end
 # ╔═╡ c4c39853-6609-4309-9408-07a0cc64fe7c
 plot(0:(3B/50):4B, chain_successrate.(Ref(2), 0:(3B/50):4B, 0:(3B/50):4B))
 
+# ╔═╡ 3bc58646-2091-41b3-983a-1354b9a8f3be
+successrate(geometry_from_density(:box_pbc, 1.45, 7,1), 7)
+
 # ╔═╡ 709214e0-de51-482d-96d7-84fec5a0f1d7
 chain_successrate(10,1.2,0.5)
 
@@ -79,4 +82,5 @@ chain_successrate(10,1.2,0.5)
 # ╠═b3105074-35c9-4ddf-b94e-9f92abb506ac
 # ╠═c4c39853-6609-4309-9408-07a0cc64fe7c
 # ╠═17b0fd1a-6213-457d-ad42-ae3176e313c1
+# ╠═3bc58646-2091-41b3-983a-1354b9a8f3be
 # ╠═709214e0-de51-482d-96d7-84fec5a0f1d7
