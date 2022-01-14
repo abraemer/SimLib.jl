@@ -52,7 +52,9 @@ function ED.initialize!(task::EONTask, arrayconstructor, spectral_size)
 end
 
 function ED.compute_task!(task::EONTask, evals, evecs, inds...)
+    n = min(size(task.data,1), size(evecs,2))
     for (i, vec) in enumerate(eachcol(evecs))
+        i <= n || break
         task.data[i, inds...] = abs2(dot(vec, task.state))
     end
 end

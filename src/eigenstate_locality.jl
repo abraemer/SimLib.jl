@@ -67,7 +67,8 @@ function ED.initialize!(task::ELTask, arrayconstructor, spectral_size)
 end
 
 function ED.compute_task!(task::ELTask, evals, evecs, inds...)
-    eigenstatelocality!(view(task.data, 1:length(evals)-1, inds...), evals, evecs, task.operator)
+    n = min(size(task.data,1), length(evals)-1)
+    eigenstatelocality!(view(task.data, 1:n, inds...), view(evals, 1:n+1), evecs, task.operator)
 end
 
 function ED.failed_task!(task::ELTask, inds...)

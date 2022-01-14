@@ -89,7 +89,8 @@ function ED.initialize!(task::IPRTask, arrayconstructor, spectral_size)
 end
 
 function ED.compute_task!(task::IPRTask, evals, evecs, inds...)
-    ipr!(view(task.data, 1:length(evals), inds...), evecs)
+    n = min(size(task.data,1), size(evecs, 2))
+    @views ipr!(task.data[1:n, inds...], evecs[:, 1:n])
 end
 
 function ED.failed_task!(task::IPRTask, inds...)
