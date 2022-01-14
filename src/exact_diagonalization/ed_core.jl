@@ -37,8 +37,6 @@ function _compute_core!(tasks, diagtype, model, parameter_chunk)
     tasks = initialize_local.(tasks)
     do_parameters(model, parameter_chunk) do parameter_index, H
         try
-            logmsg("Starting index $(parameter_index) of $(parameter_chunk)")
-
             diagtime = 0.0
             tasktime = 0.0
             start = time()
@@ -53,7 +51,8 @@ function _compute_core!(tasks, diagtype, model, parameter_chunk)
         catch e;
             logmsg("Error during diagonalization occured for index $parameter_index : $e")
             display(stacktrace(catch_backtrace()))
-            failed_task!.(tasks, :, Ref(parameterIndex))
+            rethrow(e)
+            failed_task!.(tasks, :, Ref(parameter_index))
         end
     end
 end

@@ -6,15 +6,18 @@ using ..SimLib: Maybe, FArray
 
 using Arpack
 using Distributed
+using FilteredMatrices
 import JLD2
+using KrylovKit
 using LinearAlgebra
+using LinearMaps
 using Printf: @sprintf
 using Reexport
 using SharedArrays
 using XXZNumerics
 using SpinSymmetry
 
-export EDDataDescriptor, EDDerivedDataDescriptor, EDDerivedData, Full, ShiftInvert, POLFED, ed_size, run_ed
+export EDDataDescriptor, EDDerivedDataDescriptor, EDDerivedData, Full, Sparse, ShiftInvert, ShiftInvertARPACK, POLFED, ed_size, run_ed
 export Serial, Threaded, Parallel
 
 include("task.jl")
