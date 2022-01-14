@@ -1,7 +1,7 @@
 module EON
 
 import ..ED
-using .. SimLib
+using ..SimLib
 using ..SimLib: Maybe
 using LinearAlgebra
 using SharedArrays: sdata
@@ -22,7 +22,7 @@ EONDataDescriptor(state, statename::String, args...; kwargs...) = EONDataDescrip
 
 ### Data obj
 
-struct EONData{T, N} <: ED.EDDerivedData
+struct EONData{T, N} <: SimLib.AbstractSimpleData
     descriptor::EONDataDescriptor{T}
     data::Array{Float64, N}
 end
@@ -52,7 +52,9 @@ function ED.initialize!(task::EONTask, arrayconstructor, spectral_size)
 end
 
 function ED.compute_task!(task::EONTask, evals, evecs, inds...)
+    n = min(size(task.data,1), size(evecs,2))
     for (i, vec) in enumerate(eachcol(evecs))
+        i <= n || break
         task.data[i, inds...] = abs2(dot(vec, task.state))
     end
 end

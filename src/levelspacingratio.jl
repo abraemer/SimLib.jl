@@ -53,7 +53,7 @@ The default save directory is "lsr".
 `Statistics.mean` and `Statistics.std` are overloaded to act on the first dimension to conveniently compute
 mean LSR and its variance.
 """
-struct LSRData{N} <: ED.EDDerivedData
+struct LSRData{N} <: SimLib.AbstractSimpleData
     descriptor::LSRDataDescriptor
     # [dummy, shot, h, rho]
     data::FArray{N}
@@ -104,10 +104,6 @@ function SimLib.create(lsrdd::LSRDataDescriptor)
     LSRData(lsrdd, levelspacingratio(leveldata.data))
 end
 
-Statistics.mean(lsr::LSRData; center=1.0) = meandrop(center_region(lsr, center); dims=1)
-Statistics.std(lsr::LSRData; center=1.0) = stddrop(center_region(lsr, center); dims=1)
-
-
 mutable struct LSRTask <: ED.EDTask
     data
 end
@@ -119,7 +115,8 @@ function ED.initialize!(task::LSRTask, arrayconstructor, spectral_size)
 end
 
 function ED.compute_task!(task::LSRTask, evals, evecs, inds...)
-    task.data[1:length(evals)-2, inds...] .= levelspacingratio(evals)
+    n = min(size(task.data,1), length(evals)-2)
+    task.data[1:n, inds...] .= levelspacingratio(view(evals, 1:n+2))
 end
 
 function ED.failed_task!(task::LSRTask, inds...)
@@ -129,6 +126,33 @@ end
 function ED.assemble(task::LSRTask, edd)
     LSRData(LSRDataDescriptor(edd), sdata(task.data))
 end
+
+###
+## Mean LSR
+###
+
+mutable struct MeanLSRTask <: ED.EDTask
+    data
+end
+
+MeanLevelSpacingRatio() = MeanLSRTask(nothing)
+
+function ED.initialize!(task::MeanLSRTask, arrayconstructor, spectral_size)
+    task.data = arrayconstructor(Float64, 1)
+end
+
+function ED.compute_task!(task::MeanLSRTask, evals, evecs, inds...)
+    task.data[1, inds...] = mean(levelspacingratio(evals))
+end
+
+function ED.failed_task!(task::MeanLSRTask, inds...)
+    task.data[1, inds...] .= NaN64
+end
+
+function ED.assemble(task::MeanLSRTask, edd)
+    LSRData(LSRDataDescriptor(edd), sdata(task.data))
+end
+
 
 
 end #module

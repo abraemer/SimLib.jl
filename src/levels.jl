@@ -21,7 +21,7 @@ LevelDataDescriptor(args...; kwargs...) = LevelDataDescriptor(EDDataDescriptor(a
 
 ### Data obj
 
-struct LevelData{N} <: ED.EDDerivedData
+struct LevelData{N} <: SimLib.AbstractSimpleData
     descriptor::LevelDataDescriptor
     data::FArray{N}
 end
@@ -48,7 +48,8 @@ function ED.initialize!(task::LevelTask, arrayconstructor, spectral_size)
 end
 
 function ED.compute_task!(task::LevelTask, evals, evecs, inds...)
-    task.data[1:length(evals), inds...] .= evals
+    n = min(size(task.data,1), length(evals))
+    task.data[1:n, inds...] .= view(evals, 1:n)
 end
 
 function ED.failed_task!(task::LevelTask, inds...)

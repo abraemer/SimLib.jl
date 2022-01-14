@@ -22,7 +22,7 @@ OPDiagDataDescriptor(op, opname::String, args...; kwargs...) = OPDiagDataDescrip
 
 ### Data obj
 
-struct OPDiagData{T} <: ED.EDDerivedData
+struct OPDiagData{T} <: SimLib.AbstractSimpleData
     descriptor::OPDiagDataDescriptor
     data::T
 end
@@ -57,13 +57,17 @@ function ED.initialize!(task::HermitianOPDiagTask, arrayconstructor, spectral_si
 end
 
 function ED.compute_task!(task::HermitianOPDiagTask, evals, evecs, inds...)
+    n = min(size(task.data,1), size(evecs, 2))
     for (i, vec) in enumerate(eachcol(evecs))
+        i <= n || break
         task.data[i, inds...] = real(dot(vec, task.op, vec))
     end
 end
 
 function ED.compute_task!(task::OPDiagTask, evals, evecs, inds...)
+    n = min(size(task.data,1), size(evecs, 2))
     for (i, vec) in enumerate(eachcol(evecs))
+        i <= n || break
         task.data[i, inds...] = dot(vec, task.op, vec)
     end
 end

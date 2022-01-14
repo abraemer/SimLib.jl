@@ -34,10 +34,8 @@ Can also be constructed from a `PositionDataDescriptor` by supplying a the missi
 """
 struct EnsembleDataDescriptor <: ED.EDDerivedDataDescriptor
     derivedfrom::ED.EDDataDescriptor
+    EnsembleDataDescriptor(args...; kwargs...) = new(EDDataDescriptor(args...; kwargs...))
 end
-
-EnsembleDataDescriptor(args...; kwargs...) = EnsembleDataDescriptor(EDDataDescriptor(args...; kwargs...))
-
 
 const ENSEMBLE_INDICES = (; microcanonical = 1, canonical = 2, diagonal = 3)
 
@@ -56,14 +54,14 @@ The indices mean:
 
 The default save directory is "ensemble".
 """
-struct EnsembleData{N} <: ED.EDDerivedData
+struct EnsembleData{N} <: SimLib.AbstractSimpleData
     descriptor::EnsembleDataDescriptor
     # [shot, h, rho, ensemble]
     # ensemble: 1=microcanonical, 2=canonical, 3=diag
     data::Array{Float64,N}
 end
 
-_data_indices(arr) = CartesianIndices(axes(arr)[2:end])
+_data_indices(arr) = CartesianIndices(axes(arr)[1:end-1])
 
 function Base.getproperty(ensdata::EnsembleData, s::Symbol)
     if hasfield(typeof(ensdata), s)
@@ -78,8 +76,7 @@ end
 ## Saving/Loading
 ED._default_folder(::EnsembleDataDescriptor) = "ensemble"
 
-load_ensemble(geometry, dimension, system_size, α, location=SaveLocation(); prefix=location.prefix, suffix=location.suffix) = load(EnsembleDataDescriptor(geometry, dimension, system_size, α; prefix, suffix))
-
+load_ensemble(args...; kwargs...) = load(EnsembleDataDescriptor(args...; kwargs...))
 ## main
 
 # eon [eigen_state, shot, h, rho]
