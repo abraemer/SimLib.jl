@@ -25,5 +25,4 @@ Random.seed!(5)
     include("positions.jl")
     include("ed.jl") # depends on generating positions
     include("ensembles.jl") # should be after ed.jl to reuse data
-    include("lsr.jl") # should be after ed.jl to reuse data
 end

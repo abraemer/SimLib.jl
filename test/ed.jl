@@ -23,53 +23,52 @@
     tasks = [evaltask, eontask, eevtask, lsrtask, eltask, iprtask]
     @show isa.(tasks, ED.EDTask)
 
+    model = RandomPositionsXXZWithXField(pdd, PowerLaw(6), [0], :ensemble, basis)
+
     # try all tasks once
-    edd = EDDataDescriptor(pdd; α=6, fields=[0])
+    edd = EDDataDescriptor(model, Full(), location)
     for task in tasks
-        ED.initialize!(task, edd, ED._array_constructor)
+        ED.initialize!(task, ED._array_constructor, basissize(basis))
         t = ED.initialize_local(task)
-        ED.failed_task!(task, 1, 1, 1)
+        ED.failed_task!(task, 1)
         ED.assemble(task, edd)
     end
 
+    model = RandomPositionsXXZWithXField(pdd, PowerLaw(6), [-0.2, -0.1, 0.1, 0.2], :ensemble, basis)
 
-    @testset "$name" for (name, diagtype) in [("full_ed", Full()), ("sparse_ed", Sparse(0,10))]
+    @testset "$name" for (name, diagtype) in [("full_ed", Full()), ("shiftinvert", Sparse(ShiftInvert(), [0.25,0.75], 10, true))]
         ### THREADED RUN
         # remove processes to run threaded
         workers() != [1] && rmprocs(workers())
 
-        edd1 = EDDataDescriptor(pdd; α=6, fields=[-0.2, -0.1, 0.1, 0.2], scale_fields=:ensemble, diagtype, basis, suffix="$(name)_threaded")
+        edd1 = EDDataDescriptor(model, diagtype, location; suffix="$(name)_threaded")
 
         @test edd1.pathdata.prefix == location.prefix
 
         log1 = joinpath(PREFIX, "$(name)_threaded.log")
         edata1 = to_file(log1) do
-            run_ed(edd1, posdata, tasks)
+            run_ed(edd1, tasks, Threaded())
         end
 
         save.(edata1)
         for data in edata1
             @test isfile(datapath(data))
         end
-        @test log_contains(log1, "THREADS")
+        @test log_contains(log1, "thread")
 
         ### MULTIPROCESS RUN
-        addprocs(4)
-        @everywhere import Pkg
-        @everywhere Pkg.activate("..")
-        @everywhere using SimLib
 
-        edd2 = EDDataDescriptor(pdd; α=6, fields=[-0.2, -0.1, 0.1, 0.2], scale_fields=:ensemble, diagtype, basis, suffix="$(name)_procs")
+        edd2 = EDDataDescriptor(model, diagtype, location; suffix="$(name)_procs")
 
         log2 = joinpath(PREFIX, "$(name)_processes.log")
         edata2 = to_file(log2) do
-            run_ed(edd2, posdata, tasks) # this reads the position file
+            run_ed(edd2, tasks, Parallel(4)) # this reads the position file
         end
         save.(edata2)
         for data in edata2
             @test isfile(datapath(data))
         end
-        @test log_contains(log2, "PROCESSES")
+        @test log_contains(log2, "From worker")
 
         ## check values
         for (data1, data2) in zip(edata1, edata2)
@@ -84,7 +83,7 @@
         end
 
         println("\n\nCheck logs at ",log1, " and ", log2, "\nContinue with <Return>")
-        readline(stdin)
+        #readline(stdin)
         println("Continuing!")
     end
 

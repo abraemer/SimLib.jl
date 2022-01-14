@@ -13,7 +13,7 @@ For `load`ing data only the first field is required!
 Note: This datastructure forwards properties of `model`.
 """
 struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
-    model
+    model::EDModels.Model
     diagtype::Maybe{DiagonalizationType}
     pathdata::SaveLocation
     # function EDDataDescriptor(model, diagtype, pathdata::SaveLocation)
@@ -27,7 +27,8 @@ struct EDDataDescriptor <: SimLib.AbstractDataDescriptor
 end
 
 # constructor for easier loading
-EDDataDescriptor(model, pathdata::SaveLocation=SaveLocation(); kwargs...) = EDDataDescriptor(model, missing, pathdata; kwargs...)
+EDDataDescriptor(model, pathdata::SaveLocation; kwargs...) = EDDataDescriptor(model, missing, pathdata; kwargs...)
+EDDataDescriptor(eddd::EDDataDescriptor) = eddd
 
 # forward properties to model
 function Base.getproperty(edd::EDDataDescriptor, s::Symbol)

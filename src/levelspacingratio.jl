@@ -104,10 +104,6 @@ function SimLib.create(lsrdd::LSRDataDescriptor)
     LSRData(lsrdd, levelspacingratio(leveldata.data))
 end
 
-Statistics.mean(lsr::LSRData; center=1.0) = meandrop(center_region(lsr, center); dims=1)
-Statistics.std(lsr::LSRData; center=1.0) = stddrop(center_region(lsr, center); dims=1)
-
-
 mutable struct LSRTask <: ED.EDTask
     data
 end
