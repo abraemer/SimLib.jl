@@ -54,12 +54,14 @@ function do_parameters(diag_callback, model::PreparedJXXZWithDegeneracyLifted, p
     N = size(model.J, 1)
     nshots = size(model.J, 3)
     for index in parameter_chunk
-       ρindex, shot = _flat_to_indices(index, nshots)
+        logmsg("Starting index $(index) of $(parameter_chunk)")
+        ρindex, shot = _flat_to_indices(index, nshots)
 
         J = @view model.J[:,:, shot, ρindex]
         H_int = symmetrize_operator(xxzmodel(J, -0.73), model.basis)
 
         for (k, δ) in enumerate(model.δs)
+            logmsg("Doing #rho=$ρindex #shot=$shot #delta=$k")
             parameterI = CartesianIndex(shot, k, ρindex)
             z_fields = dropdims(sum(J; dims=1); dims=1)
             diag_callback(parameterI, H_int + δ * symmetrize_operator(z_field(z_fields), model.basis))

@@ -66,8 +66,6 @@ function _compute_interactions!(arr, posdata, interaction, scaling)
 end
 
 
-_flat_to_indices(index, nshots) = fldmod1(index, nshots)
-
 function _workload_chunks(total, nchunks)
     splits = [round(Int, s) for s in range(0; stop=total, length=nchunks+1)]
     [(splits[i]+1):splits[i+1] for i in 1:nchunks]
@@ -85,12 +83,14 @@ function do_parameters(diag_callback, model::PreparedJXXZWithField, parameter_ch
     field_operator = sum(spin_ops)
     nshots = size(model.J, 3)
     for index in parameter_chunk
-       ρindex, shot = _flat_to_indices(index, nshots)
+        logmsg("Starting index $(index) of $(parameter_chunk)")
+        ρindex, shot = _flat_to_indices(index, nshots)
 
         J = @view model.J[:,:, shot, ρindex]
         H_int = symmetrize_operator(xxzmodel(J, -0.73), model.basis)
 
         for (k, h) in enumerate(model.fields)
+            logmsg("Doing #rho=$ρindex #shot=$shot #field=$k")
             parameterI = CartesianIndex(shot, k, ρindex)
             diag_callback(parameterI, H_int + h*field_operator)
         end
