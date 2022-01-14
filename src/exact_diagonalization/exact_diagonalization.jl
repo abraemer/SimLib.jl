@@ -10,7 +10,6 @@ using FilteredMatrices
 import JLD2
 using KrylovKit
 using LinearAlgebra
-using LinearMaps
 using Printf: @sprintf
 using Reexport
 using SharedArrays
