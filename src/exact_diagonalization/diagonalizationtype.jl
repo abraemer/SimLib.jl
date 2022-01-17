@@ -58,7 +58,7 @@ function diagonalize!(callback, H, sp::Sparse{ShiftInvert})
             #LinearMap{eltype(H)}(x -> F \ x, L, ismutating=false, issymmetric=true)
             x -> F \ x
         end
-        evals, evecs, info = eigsolve(iH, L, sp.count; ishermitian=true)
+        evals, evecs, info = eigsolve(iH, L, sp.count; ishermitian=true, krylovdim=max(20,2*sp.count+1))
         @. evals = σ + 1 / evals
         logmsg("Shift-invert: $(info.converged) converged after $(info.numiter) iterations.")
         callback(i, LinearAlgebra.sorteig!(evals, hcat(evecs...))...)
@@ -81,7 +81,7 @@ function diagonalize!(callback, H, sp::Sparse{POLFED})
         # this order estimate needs to be improved!
         order = order_estimate(σ, Δϵ, (emin,emax))
         δH = delta(H, σ, (emin, emax); order)
-        _, vecs, info = eigsolve(δH, L, sp.count; ishermitian=true)
+        _, vecs, info = eigsolve(δH, L, sp.count; ishermitian=true, krylovdim=max(20,2*sp.count+1))
         logmsg("POLFED with order $order: $(info.converged) converged after $(info.numiter) iterations.")
         # compute eigenvals from vectors:
         vals = dot.(vecs, Ref(H), vecs) ./ dot.(vecs, vecs)
