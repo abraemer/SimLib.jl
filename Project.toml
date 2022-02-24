@@ -1,7 +1,7 @@
 name = "SimLib"
 uuid = "d0a720f3-e115-4687-947d-90041a62db49"
 authors = ["Adrian Braemer <11058200+abraemer@users.noreply.github.com> and contributors"]
-version = "0.9.1"
+version = "0.9.2"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
