@@ -51,7 +51,6 @@ function _compute_core!(tasks, diagtype, model, parameter_chunk)
         catch e;
             logmsg("Error during diagonalization occured for index $parameter_index : $e")
             display(stacktrace(catch_backtrace()))
-            rethrow(e)
             failed_task!.(tasks, :, Ref(parameter_index))
         end
     end
