@@ -85,15 +85,8 @@ function levelspacingratio(levels; center=1.0)
     for I in CartesianIndices(axes(levels)[2:end])
         for (i,j) in enumerate(range)
             a,b,c = levels[j-2,I], levels[j-1,I], levels[j,I]
-            if a ≈ b || b ≈ c || a ≈ c
-                # prevent NaNs or -Infs
-                # a=b=c -> NaN
-                # a>b=c -> -Inf # this can happen if all of them are very close
-                res[i, I] = 0
-            else
-                ratio = abs((b-a)/(c-b)) # use abs to be sure
-                res[i, I] = min(ratio, 1/ratio)
-            end
+            ratio = abs((b-a)/(c-b)) # use abs to be sure
+            res[i, I] = min(ratio, 1/ratio)
         end
     end
     res
