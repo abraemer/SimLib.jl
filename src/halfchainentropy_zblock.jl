@@ -107,7 +107,7 @@ function ED.initialize!(task::HalfChainEntropyTask, arrayconstructor, spectral_s
 end
 
 function ED.compute_task!(task::HalfChainEntropyTask, evals, evecs, inds...)
-    n = min(size(task.data,1), size(evecs,2))
+    n = min(size(task.data,2), size(evecs,2))
     for (i, ψ) in enumerate(eachcol(evecs))
         i <= n || break
         entanglement_entropy!(view(task.data, :, i, inds...), task.entropy_strategy, ψ)
