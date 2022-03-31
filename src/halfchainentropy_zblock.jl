@@ -106,7 +106,7 @@ function ED.initialize!(task::HalfChainEntropyTask, arrayconstructor, spectral_s
     task.data = arrayconstructor(Float64, task.entropy_strategy.size, spectral_size)
 end
 
-function ED.compute_task!(task::HalfChainEntropyTask, evals, evecs, inds...)
+function ED.compute_task!(task::HalfChainEntropyTask, evals, evecs, inds...; additional_parameters)
     n = min(size(task.data,2), size(evecs,2))
     for (i, ψ) in enumerate(eachcol(evecs))
         i <= n || break

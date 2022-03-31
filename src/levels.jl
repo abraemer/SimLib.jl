@@ -47,7 +47,7 @@ function ED.initialize!(task::LevelTask, arrayconstructor, spectral_size)
     task.data = arrayconstructor(Float64, spectral_size)
 end
 
-function ED.compute_task!(task::LevelTask, evals, evecs, inds...)
+function ED.compute_task!(task::LevelTask, evals, evecs, inds...; additional_parameters)
     n = min(size(task.data,1), length(evals))
     task.data[1:n, inds...] .= view(evals, 1:n)
 end

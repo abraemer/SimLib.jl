@@ -88,7 +88,7 @@ function ED.initialize!(task::IPRTask, arrayconstructor, spectral_size)
     task.data = arrayconstructor(Float64, spectral_size)
 end
 
-function ED.compute_task!(task::IPRTask, evals, evecs, inds...)
+function ED.compute_task!(task::IPRTask, evals, evecs, inds...; additional_parameters)
     n = min(size(task.data,1), size(evecs, 2))
     @views ipr!(task.data[1:n, inds...], evecs[:, 1:n])
 end

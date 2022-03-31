@@ -56,7 +56,7 @@ function ED.initialize!(task::HermitianOPDiagTask, arrayconstructor, spectral_si
     task.data = arrayconstructor(Float64, spectral_size)
 end
 
-function ED.compute_task!(task::HermitianOPDiagTask, evals, evecs, inds...)
+function ED.compute_task!(task::HermitianOPDiagTask, evals, evecs, inds...; additional_parameters)
     n = min(size(task.data,1), size(evecs, 2))
     for (i, vec) in enumerate(eachcol(evecs))
         i <= n || break
@@ -64,7 +64,7 @@ function ED.compute_task!(task::HermitianOPDiagTask, evals, evecs, inds...)
     end
 end
 
-function ED.compute_task!(task::OPDiagTask, evals, evecs, inds...)
+function ED.compute_task!(task::OPDiagTask, evals, evecs, inds...; additional_parameters)
     n = min(size(task.data,1), size(evecs, 2))
     for (i, vec) in enumerate(eachcol(evecs))
         i <= n || break

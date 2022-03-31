@@ -107,7 +107,7 @@ function ED.initialize!(task::LSRTask, arrayconstructor, spectral_size)
     task.data = arrayconstructor(Float64, spectral_size-2)
 end
 
-function ED.compute_task!(task::LSRTask, evals, evecs, inds...)
+function ED.compute_task!(task::LSRTask, evals, evecs, inds...; additional_parameters)
     n = min(size(task.data,1), length(evals)-2)
     task.data[1:n, inds...] .= levelspacingratio(view(evals, 1:n+2))
 end

@@ -51,7 +51,7 @@ function ED.initialize!(task::EONTask, arrayconstructor, spectral_size)
     task.data = arrayconstructor(Float64, spectral_size)
 end
 
-function ED.compute_task!(task::EONTask, evals, evecs, inds...)
+function ED.compute_task!(task::EONTask, evals, evecs, inds...; additional_parameters)
     n = min(size(task.data,1), size(evecs,2))
     for (i, vec) in enumerate(eachcol(evecs))
         i <= n || break

@@ -66,7 +66,7 @@ function ED.initialize!(task::ELTask, arrayconstructor, spectral_size)
     task.data = arrayconstructor(Float64, spectral_size-1)
 end
 
-function ED.compute_task!(task::ELTask, evals, evecs, inds...)
+function ED.compute_task!(task::ELTask, evals, evecs, inds...; additional_parameters)
     n = min(size(task.data,1), length(evals)-1)
     eigenstatelocality!(view(task.data, 1:n, inds...), view(evals, 1:n+1), evecs, task.operator)
 end
