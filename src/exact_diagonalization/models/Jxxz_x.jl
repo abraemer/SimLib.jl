@@ -92,7 +92,7 @@ function do_parameters(diag_callback, model::PreparedJXXZWithField, parameter_ch
         for (k, h) in enumerate(model.fields)
             logmsg("Doing #rho=$ρindex #shot=$shot #field=$k")
             parameterI = CartesianIndex(shot, k, ρindex)
-            diag_callback(parameterI, H_int + h*field_operator)
+            diag_callback(parameterI, H_int + h*field_operator, J)
         end
     end
 end

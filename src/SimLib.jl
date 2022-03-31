@@ -27,6 +27,7 @@ include("ensembles.jl")
 include("levelspacingratio.jl")
 include("halfchainentropy_zblock.jl")
 include("inverseparticipationratio.jl")
+include("participationratio/participationratio.jl")
 
 @reexport using .Positions
 @reexport using .ED
@@ -38,5 +39,6 @@ include("inverseparticipationratio.jl")
 @reexport using .Ensembles
 @reexport using .HCE_ZBlock_Module
 @reexport using .IPR
+@reexport using .PRModule
 
 end

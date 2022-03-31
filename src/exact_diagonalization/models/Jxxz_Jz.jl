@@ -64,7 +64,7 @@ function do_parameters(diag_callback, model::PreparedJXXZWithDegeneracyLifted, p
             logmsg("Doing #rho=$ρindex #shot=$shot #delta=$k")
             parameterI = CartesianIndex(shot, k, ρindex)
             z_fields = dropdims(sum(J; dims=1); dims=1)
-            diag_callback(parameterI, H_int + δ * symmetrize_operator(z_field(z_fields), model.basis))
+            diag_callback(parameterI, H_int + δ * symmetrize_operator(z_field(z_fields), model.basis), J)
         end
     end
 end
