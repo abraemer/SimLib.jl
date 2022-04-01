@@ -37,7 +37,7 @@ function peters_clustering!(J)
     while length(clusters) < div(N,2)
         I = argmax(J)
         a,b = I.I
-        push!(clusters, [a,b])
+        push!(clusters, [N-a+1,N-b+1]) # !!! Spin-number is N+1-i if spin is ith in J-matrix !!!
         J[a,:] .= 0
         J[b,:] .= 0
         J[:,a] .= 0

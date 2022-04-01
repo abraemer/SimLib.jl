@@ -7,7 +7,7 @@ end
 
 
 
-PRDataDescriptor(basis, args...; kwargs...) = PRDataDescriptor(EDDataDescriptor(args...; kwargs...), basis)
+PRDataDescriptor(basis, args...; kwargs...) = PRDataDescriptor(basis, EDDataDescriptor(args...; kwargs...))
 
 
 
